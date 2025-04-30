@@ -13,8 +13,8 @@
     try {
       const file = files[0];
       const data = await readCSVFile(file);
-      const sketches = processSketchData(data);
-      dispatch('import', sketches);
+      const processedSketches = processSketchData(data);
+      dispatch('import', { sketches: processedSketches });
       fileInput.value = ''; // Reset file input
     } catch (error) {
       console.error('Error importing CSV:', error);

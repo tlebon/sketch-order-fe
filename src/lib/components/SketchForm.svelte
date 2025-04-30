@@ -1,119 +1,231 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
+  import type { Sketch } from '$lib/types';
 
   const dispatch = createEventDispatcher();
 
   let title = '';
   let description = '';
   let duration = 5;
-  let castMember = '';
-  let cast: string[] = [];
+  let chars = 1;
+  let characterName = '';
+  let performerName = '';
+  let characterPerformers: { character_name: string; performer_name: string }[] = [];
 
-  function addCastMember() {
-    if (castMember.trim()) {
-      cast = [...cast, castMember.trim()];
-      castMember = '';
-    }
+  function addCharacterPerformer() {
+    if (!characterName || !performerName) return;
+    characterPerformers = [...characterPerformers, { character_name: characterName, performer_name: performerName }];
+    characterName = '';
+    performerName = '';
   }
 
-  function removeCastMember(index: number) {
-    cast = cast.filter((_, i) => i !== index);
+  function removeCharacterPerformer(index: number) {
+    characterPerformers = characterPerformers.filter((_, i) => i !== index);
   }
 
-  function handleSubmit() {
-    if (!title.trim()) return;
-
-    dispatch('create', {
-      title: title.trim(),
-      description: description.trim(),
+  function handleSubmit(e: Event) {
+    e.preventDefault();
+    const sketch: Omit<Sketch, 'id' | 'created_at' | 'updated_at'> = {
+      title,
+      description,
       duration,
-      cast
-    });
-
-    // Reset form
+      chars,
+      casted: characterPerformers.length,
+      locked: false,
+      position: 0,
+      character_performers: characterPerformers
+    };
+    dispatch('submit', { sketch });
     title = '';
     description = '';
     duration = 5;
-    cast = [];
+    chars = 1;
+    characterName = '';
+    performerName = '';
+    characterPerformers = [];
   }
 </script>
 
-<form onsubmit={(e) => { e.preventDefault(); handleSubmit(); }} class="bg-white p-6 rounded-lg shadow-sm">
-  <div class="mb-4">
-    <label for="title" class="block text-sm font-medium text-gray-700 mb-1">Title</label>
+<form onsubmit={handleSubmit} class="sketch-form">
+  <div class="form-group">
+    <label for="title">Title</label>
     <input
       type="text"
       id="title"
       bind:value={title}
       required
       placeholder="Enter sketch title"
-      class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
     />
   </div>
 
-  <div class="mb-4">
-    <label for="description" class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+  <div class="form-group">
+    <label for="description">Description</label>
     <textarea
       id="description"
       bind:value={description}
       placeholder="Enter sketch description"
-      class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-h-[100px]"
     ></textarea>
   </div>
 
-  <div class="mb-4">
-    <label for="duration" class="block text-sm font-medium text-gray-700 mb-1">Duration (minutes)</label>
+  <div class="form-group">
+    <label for="duration">Duration (minutes)</label>
     <input
       type="number"
       id="duration"
       bind:value={duration}
       min="1"
-      max="30"
       required
-      class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
     />
   </div>
 
-  <div class="mb-4">
-    <label for="cast-input" class="block text-sm font-medium text-gray-700 mb-1">Cast Members</label>
-    <div class="flex gap-2 mb-2">
+  <div class="form-group">
+    <label for="chars">Number of Characters</label>
+    <input
+      type="number"
+      id="chars"
+      bind:value={chars}
+      min="1"
+      required
+    />
+  </div>
+
+  <div class="form-group">
+    <label>Character Assignments</label>
+    <div class="character-inputs">
       <input
         type="text"
-        id="cast-input"
-        bind:value={castMember}
-        placeholder="Enter cast member name"
-        onkeydown={(e) => e.key === 'Enter' && addCastMember()}
-        class="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+        bind:value={characterName}
+        placeholder="Character name"
       />
-      <button
-        type="button"
-        onclick={addCastMember}
-        class="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
-      >
-        Add
-      </button>
-    </div>
-    <div class="flex flex-wrap gap-2">
-      {#each cast as member, i}
-        <span class="inline-flex items-center gap-1 bg-blue-50 px-2 py-1 rounded text-sm">
-          {member}
-          <button
-            type="button"
-            onclick={() => removeCastMember(i)}
-            class="text-gray-500 hover:text-gray-700 focus:outline-none"
-            aria-label={`Remove ${member} from cast`}
-          >
-            ×
-          </button>
-        </span>
-      {/each}
+      <input
+        type="text"
+        bind:value={performerName}
+        placeholder="Performer name"
+        onkeydown={(e) => e.key === 'Enter' && addCharacterPerformer()}
+      />
+      <button type="button" onclick={addCharacterPerformer}>Add</button>
     </div>
   </div>
 
-  <button
-    type="submit"
-    class="w-full px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
-  >
-    Create Sketch
-  </button>
-</form> 
+  {#if characterPerformers.length > 0}
+    <div class="character-list">
+      <h4>Current Assignments</h4>
+      <ul>
+        {#each characterPerformers as cp, i}
+          <li>
+            <span class="character">{cp.character_name}</span>
+            <span class="performer">{cp.performer_name}</span>
+            <button
+              type="button"
+              onclick={() => removeCharacterPerformer(i)}
+              class="remove-button"
+            >
+              ×
+            </button>
+          </li>
+        {/each}
+      </ul>
+    </div>
+  {/if}
+
+  <button type="submit" class="submit-button">Create Sketch</button>
+</form>
+
+<style>
+  .sketch-form {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  .form-group {
+    margin-bottom: 1rem;
+  }
+
+  label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: #333;
+  }
+
+  input,
+  textarea {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 1rem;
+  }
+
+  textarea {
+    min-height: 100px;
+    resize: vertical;
+  }
+
+  .character-inputs {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 0.5rem;
+    align-items: center;
+  }
+
+  .character-list {
+    margin: 1rem 0;
+  }
+
+  .character-list h4 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1rem;
+  }
+
+  .character-list ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .character-list li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem;
+    background: #f5f5f5;
+    border-radius: 4px;
+    margin-bottom: 0.5rem;
+  }
+
+  .character {
+    font-weight: bold;
+  }
+
+  .performer {
+    color: #666;
+  }
+
+  .remove-button {
+    background: none;
+    border: none;
+    color: #f44336;
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 0 0.5rem;
+  }
+
+  .submit-button {
+    width: 100%;
+    padding: 0.75rem;
+    background: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
+
+  .submit-button:hover {
+    background: #45a049;
+  }
+</style> 

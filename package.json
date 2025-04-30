@@ -52,12 +52,15 @@
 		"vitest": "^3.0.0"
 	},
 	"dependencies": {
+		"@lucide/svelte": "^0.503.0",
 		"@node-rs/argon2": "^2.0.2",
 		"@oslojs/crypto": "^1.0.1",
 		"@oslojs/encoding": "^1.1.0",
+		"@types/uuid": "^10.0.0",
 		"better-sqlite3": "^11.8.0",
 		"drizzle-orm": "^0.40.0",
-		"svelte-dnd-action": "^0.9.61"
+		"svelte-dnd-action": "^0.9.61",
+		"uuid": "^11.1.0"
 	},
 	"pnpm": {
 		"onlyBuiltDependencies": [

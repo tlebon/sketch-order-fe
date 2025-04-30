@@ -2,10 +2,11 @@ import { json } from '@sveltejs/kit';
 import { createClient } from '$lib/server/db';
 import type { RequestEvent } from '@sveltejs/kit';
 
-export async function GET() {
+export async function GET({ url }: RequestEvent) {
   try {
+    const showId = url.searchParams.get('show_id');
     const db = createClient();
-    const sketches = await db.getSketches();
+    const sketches = await db.getSketches(showId || undefined);
     return json(sketches);
   } catch (error) {
     console.error('Failed to fetch sketches:', error);

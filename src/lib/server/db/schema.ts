@@ -34,6 +34,7 @@ export const sketches = sqliteTable('sketches', {
 	casted: integer('casted').notNull(),
 	locked: integer('locked').notNull().default(0),
 	position: integer('position').notNull(),
+	raw_data: text('raw_data'),
 	created_at: text('created_at').default(sql`CURRENT_TIMESTAMP`),
 	updated_at: text('updated_at').default(sql`CURRENT_TIMESTAMP`)
 });
@@ -43,6 +44,15 @@ export const castMembers = sqliteTable('cast_members', {
 	sketch_id: text('sketch_id').notNull().references(() => sketches.id),
 	name: text('name').notNull(),
 	created_at: text('created_at').default(sql`CURRENT_TIMESTAMP`)
+});
+
+export const characterPerformers = sqliteTable('character_performers', {
+	id: text('id').primaryKey(),
+	sketch_id: text('sketch_id').notNull().references(() => sketches.id),
+	character_name: text('character_name').notNull(),
+	performer_name: text('performer_name').notNull(),
+	created_at: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+	updated_at: text('updated_at').default(sql`CURRENT_TIMESTAMP`)
 });
 
 export type Session = typeof session.$inferSelect;

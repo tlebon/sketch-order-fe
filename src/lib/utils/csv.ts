@@ -3,10 +3,11 @@ export interface SketchData {
   title: string;
   description: string;
   duration: number;
-  cast: string[];
   chars: number;
   casted: number;
   locked: boolean;
+  character_performers: { character_name: string; performer_name: string }[];
+  raw_data: Record<string, string>;
 }
 
 export function parseCSV(csvText: string): Record<string, string>[] {
@@ -32,25 +33,45 @@ export function processSketchData(sketchesData: Record<string, string>[]): Sketc
     const title = row['title'];
     if (!title) return;
 
-    // Find the index of the 'casted' column
+    // Extract character-performer pairs
+    const characterPerformers: { character_name: string; performer_name: string }[] = [];
     const columns = Object.keys(row);
+    
+    // Find the index of the 'casted' column
     const castedIndex = columns.findIndex(col => col.toLowerCase() === 'casted');
     
-    // Extract cast members from columns after 'casted'
-    const castMembers = columns
-      .slice(castedIndex + 1) // Get all columns after 'casted'
-      .map(col => row[col].trim()) // Get the value for each column
-      .filter(Boolean); // Remove empty values
+    // Process columns after 'casted' as character-performer pairs
+    if (castedIndex !== -1) {
+      for (let i = castedIndex + 1; i < columns.length; i++) {
+        const performerName = columns[i].trim();
+        const characterName = row[columns[i]]?.trim();
+        if (performerName && characterName) {
+          characterPerformers.push({
+            character_name: characterName,
+            performer_name: performerName
+          });
+        }
+      }
+    }
+
+    // Parse duration from time format (MM:SS)
+    const timeStr = row['time'] || row['duration'] || '5:00';
+    const [minutes, seconds] = timeStr.split(':').map(Number);
+    const duration = minutes + (seconds || 0) / 60;
 
     mergedData[title] = {
       id: crypto.randomUUID(),
       title,
       description: row['description'] || `Characters: ${row['chars'] || '0'}`,
-      duration: parseInt(row['time'] || row['duration'] || '5', 10),
-      cast: castMembers,
+      duration: Math.ceil(duration), // Round up to nearest minute
       chars: parseInt(row['chars'] || '0', 10),
-      casted: parseInt(row['casted'] || '0', 10),
-      locked: false // Initialize all imported sketches as unlocked
+      casted: characterPerformers.length,
+      locked: false, // Initialize all imported sketches as unlocked
+      character_performers: characterPerformers.map(cp => ({
+        character_name: cp.character_name,
+        performer_name: cp.performer_name
+      })),
+      raw_data: row // Preserve the raw CSV data
     };
   });
 
