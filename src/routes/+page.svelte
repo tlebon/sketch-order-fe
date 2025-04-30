@@ -197,6 +197,23 @@
     }
   }
 
+  async function handleDelete(e: CustomEvent) {
+    const { id } = e.detail;
+    try {
+      const response = await fetch(`/api/sketches/${id}`, {
+        method: 'DELETE'
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete sketch');
+      }
+
+      sketches = sketches.filter(sketch => sketch.id !== id);
+    } catch (error) {
+      console.error('Failed to delete sketch:', error);
+    }
+  }
+
   function handleViewDetails(e: CustomEvent) {
     if (!isDragging) {
       selectedSketch = e.detail.sketch;
@@ -244,6 +261,7 @@
             on:toggleLock={handleToggleLock}
             on:viewDetails={handleViewDetails}
             on:update={handleUpdate}
+            on:delete={handleDelete}
           />
         {/each}
       </div>

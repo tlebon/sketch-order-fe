@@ -47,4 +47,16 @@ export async function PATCH({ request }: RequestEvent) {
     console.error('Failed to toggle sketch lock:', error);
     return new Response('Failed to toggle sketch lock', { status: 500 });
   }
+}
+
+export async function DELETE({ params }: RequestEvent) {
+  try {
+    const { id } = params;
+    const db = createClient();
+    await db.deleteSketch(id);
+    return new Response(null, { status: 204 });
+  } catch (error) {
+    console.error('Failed to delete sketch:', error);
+    return new Response('Failed to delete sketch', { status: 500 });
+  }
 } 

@@ -87,6 +87,12 @@ export function createClient() {
         .update(sketches)
         .set({ locked })
         .where(sql`id = ${id}`);
+    },
+
+    async deleteSketch(id: string) {
+      await db
+        .delete(sketches)
+        .where(sql`id = ${id}`);
     }
   };
 }
