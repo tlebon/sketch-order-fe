@@ -46,9 +46,9 @@
 
 <div
   class="bg-white p-6 rounded-lg shadow-sm"
-  on:dragover={handleDragOver}
-  on:dragleave={handleDragLeave}
-  on:drop={handleDrop}
+  ondragover={(e) => handleDragOver(e)}
+  ondragleave={(e) => handleDragLeave(e)}
+  ondrop={(e) => handleDrop(e)}
   class:border-2={isDragging}
   class:border-dashed={isDragging}
   class:border-blue-500={isDragging}
@@ -94,7 +94,7 @@
 
     <button
       type="button"
-      on:click={handleImport}
+      onclick={handleImport}
       class="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
     >
       Import CSV

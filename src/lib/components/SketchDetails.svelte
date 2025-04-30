@@ -16,7 +16,7 @@
 
   const dispatch = createEventDispatcher();
 
-  function handleClose(event: MouseEvent) {
+  function handleClose(event: MouseEvent | KeyboardEvent) {
     event.stopPropagation();
     dispatch('close');
   }
@@ -35,18 +35,41 @@
 
 <div
   class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
-  on:click={handleClose}
+  onclick={handleClose}
 >
   <div
     class="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
-    on:click|stopPropagation
+    onclick={(e) => e.stopPropagation()}
   >
     <div class="p-6">
       <div class="flex justify-between items-start mb-4">
-        <h2 class="text-2xl font-bold text-gray-900">{sketch.title}</h2>
+        <div class="flex items-center gap-4">
+          <button
+            type="button"
+            onclick={handleClose}
+            class="text-gray-500 hover:text-gray-700 focus:outline-none"
+            aria-label="Back to show"
+          >
+            <svg
+              class="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M10 19l-7-7m0 0l7-7m-7 7h18"
+              />
+            </svg>
+          </button>
+          <h2 class="text-2xl font-bold text-gray-900">{sketch.title}</h2>
+        </div>
         <button
           type="button"
-          on:click={handleClose}
+          onclick={handleClose}
           class="text-gray-500 hover:text-gray-700 focus:outline-none"
           aria-label="Close details"
         >

@@ -1,95 +1,36 @@
 <script lang="ts">
   import { dndzone } from 'svelte-dnd-action';
-  import SketchCard from '$lib/components/SketchCard.svelte';
-  import SketchForm from '$lib/components/SketchForm.svelte';
-  import CSVImport from '$lib/components/CSVImport.svelte';
-  import SketchDetails from '$lib/components/SketchDetails.svelte';
+  import type { PageData } from './$types';
 
   const { data } = $props();
 
-  let sketches = $state<Array<{
-    id: string;
-    title: string;
-    description: string;
-    duration: number;
-    cast: string[];
-    chars: number;
-    casted: number;
-    locked: boolean;
-  }>>(data.sketches);
-
-  let selectedSketch = $state<typeof sketches[number] | null>(null);
+  let shows = $state(data.shows);
   let isDragging = $state(false);
+  let showForm = $state(false);
+  let newShow = $state({
+    title: '',
+    description: ''
+  });
 
   async function handleDndConsider(e: CustomEvent) {
-    const { items, info } = e.detail;
+    const { items } = e.detail;
     isDragging = true;
-    
-    // Don't allow dragging if the source item is locked
-    if (info.sourceItem?.locked) {
-      return;
-    }
-
-    // Don't allow dropping on locked items
-    const targetIndex = info.targetIndex;
-    if (targetIndex !== undefined && items[targetIndex]?.locked) {
-      return;
-    }
-
-    // Don't allow moving locked items
-    const sourceIndex = info.sourceIndex;
-    if (sourceIndex !== undefined && items[sourceIndex]?.locked) {
-      return;
-    }
-
-    // Don't allow moving items between locked items
-    const sourceItem = items[sourceIndex];
-    const targetItem = items[targetIndex];
-    if (sourceItem?.locked || targetItem?.locked) {
-      return;
-    }
-
-    sketches = items;
+    shows = items;
   }
 
   async function handleDndFinalize(e: CustomEvent) {
-    const { items, info } = e.detail;
+    const { items } = e.detail;
     isDragging = false;
-    
-    // Don't allow dragging if the source item is locked
-    if (info.sourceItem?.locked) {
-      return;
-    }
-
-    // Don't allow dropping on locked items
-    const targetIndex = info.targetIndex;
-    if (targetIndex !== undefined && items[targetIndex]?.locked) {
-      return;
-    }
-
-    // Don't allow moving locked items
-    const sourceIndex = info.sourceIndex;
-    if (sourceIndex !== undefined && items[sourceIndex]?.locked) {
-      return;
-    }
-
-    // Don't allow moving items between locked items
-    const sourceItem = items[sourceIndex];
-    const targetItem = items[targetIndex];
-    if (sourceItem?.locked || targetItem?.locked) {
-      return;
-    }
-
-    sketches = items;
+    shows = items;
 
     // Update positions in the database
-    const updates = items.map((sketch, index) => ({
-      id: sketch.id,
+    const updates = items.map((show: { id: string }, index: number) => ({
+      id: show.id,
       position: index
     }));
 
     try {
-      const response = await fetch('/api/sketches', {
+      const response = await fetch('/api/shows', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
@@ -98,180 +39,150 @@
       });
 
       if (!response.ok) {
-        throw new Error('Failed to update sketch order');
+        throw new Error('Failed to update show order');
       }
     } catch (error) {
-      console.error('Failed to update sketch order:', error);
+      console.error('Failed to update show order:', error);
       // Revert to the original order if the update fails
-      sketches = [...sketches].sort((a, b) => a.position - b.position);
+      shows = [...shows].sort((a, b) => a.position - b.position);
     }
   }
 
-  async function handleCreate(e: CustomEvent) {
-    const newSketch = {
+  async function handleCreate() {
+    const show = {
       id: crypto.randomUUID(),
-      ...e.detail,
-      locked: false,
-      position: sketches.length
+      ...newShow,
+      position: shows.length
     };
 
     try {
-      const response = await fetch('/api/sketches', {
+      const response = await fetch('/api/shows', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(newSketch)
+        body: JSON.stringify(show)
       });
 
       if (!response.ok) {
-        throw new Error('Failed to create sketch');
+        throw new Error('Failed to create show');
       }
 
-      sketches = [...sketches, newSketch];
+      shows = [...shows, show];
+      showForm = false;
+      newShow = { title: '', description: '' };
     } catch (error) {
-      console.error('Failed to create sketch:', error);
+      console.error('Failed to create show:', error);
     }
   }
 
-  async function handleImport(e: CustomEvent) {
-    const importedSketches = e.detail.map((sketch: any, index: number) => ({
-      ...sketch,
-      locked: false,
-      position: sketches.length + index
-    }));
-
+  async function handleDelete(id: string) {
     try {
-      // Create all sketches in parallel
-      const responses = await Promise.all(
-        importedSketches.map(sketch =>
-          fetch('/api/sketches', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(sketch)
-          })
-        )
-      );
-
-      // Check if all responses are successful
-      if (responses.every(response => response.ok)) {
-        sketches = [...sketches, ...importedSketches];
-      } else {
-        throw new Error('Failed to import some sketches');
-      }
-    } catch (error) {
-      console.error('Failed to import sketches:', error);
-      throw error; // Re-throw to show error in UI
-    }
-  }
-
-  async function handleToggleLock(e: CustomEvent) {
-    const { id } = e.detail;
-    const sketch = sketches.find(s => s.id === id);
-    if (!sketch) return;
-
-    const newLockedState = !sketch.locked;
-
-    try {
-      const response = await fetch('/api/sketches', {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ id, locked: newLockedState })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to toggle sketch lock');
-      }
-
-      sketches = sketches.map(sketch => 
-        sketch.id === id 
-          ? { ...sketch, locked: newLockedState }
-          : sketch
-      );
-    } catch (error) {
-      console.error('Failed to toggle sketch lock:', error);
-    }
-  }
-
-  async function handleDelete(e: CustomEvent) {
-    const { id } = e.detail;
-    try {
-      const response = await fetch(`/api/sketches/${id}`, {
+      const response = await fetch(`/api/shows/${id}`, {
         method: 'DELETE'
       });
 
       if (!response.ok) {
-        throw new Error('Failed to delete sketch');
+        throw new Error('Failed to delete show');
       }
 
-      sketches = sketches.filter(sketch => sketch.id !== id);
+      shows = shows.filter(show => show.id !== id);
     } catch (error) {
-      console.error('Failed to delete sketch:', error);
-    }
-  }
-
-  function handleViewDetails(e: CustomEvent) {
-    if (!isDragging) {
-      selectedSketch = e.detail.sketch;
-    }
-  }
-
-  function handleCloseDetails() {
-    selectedSketch = null;
-  }
-
-  function handleUpdate(event: CustomEvent) {
-    const updatedSketch = event.detail;
-    const index = sketches.findIndex(s => s.id === updatedSketch.id);
-    if (index !== -1) {
-      sketches[index] = updatedSketch;
-      sketches = sketches; // Trigger reactivity
+      console.error('Failed to delete show:', error);
     }
   }
 </script>
 
 <div class="max-w-7xl mx-auto p-8">
   <div class="text-center mb-8">
-    <h1 class="text-3xl font-bold text-gray-900 mb-2">Sketch Show Planner</h1>
-    <p class="text-gray-600">Drag and drop to reorder your sketches. Click the lock icon to fix a sketch in place.</p>
+    <h1 class="text-3xl font-bold text-gray-900 mb-2">Sketch Show Manager</h1>
+    <p class="text-gray-600">Create and manage your sketch shows. Drag and drop to reorder.</p>
   </div>
 
-  <div class="grid grid-cols-1 md:grid-cols-[300px_1fr] gap-8">
-    <div class="space-y-8">
-      <div class="sticky top-8 space-y-8">
-        <CSVImport on:import={handleImport} />
-        <SketchForm on:create={handleCreate} />
-      </div>
-    </div>
+  <div class="flex justify-end mb-6">
+    <button
+      class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg"
+      onclick={() => showForm = true}
+    >
+      Create New Show
+    </button>
+  </div>
 
-    <div class="min-h-[200px]">
-      <div
-        use:dndzone={{ items: sketches }}
-        onconsider={handleDndConsider}
-        onfinalize={handleDndFinalize}
-        class="min-h-[100px] space-y-4"
-      >
-        {#each sketches as sketch (sketch.id)}
-          <SketchCard 
-            {sketch} 
-            on:toggleLock={handleToggleLock}
-            on:viewDetails={handleViewDetails}
-            on:update={handleUpdate}
-            on:delete={handleDelete}
-          />
-        {/each}
-      </div>
+  {#if showForm}
+    <div class="bg-white rounded-lg shadow p-6 mb-6">
+      <h2 class="text-xl font-semibold mb-4">Create New Show</h2>
+      <form onsubmit={(e) => { e.preventDefault(); handleCreate(); }}>
+        <div class="space-y-4">
+          <div>
+            <label for="title" class="block text-sm font-medium text-gray-700">Title</label>
+            <input
+              type="text"
+              id="title"
+              bind:value={newShow.title}
+              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              required
+            />
+          </div>
+          <div>
+            <label for="description" class="block text-sm font-medium text-gray-700">Description</label>
+            <textarea
+              id="description"
+              bind:value={newShow.description}
+              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              rows="3"
+            />
+          </div>
+          <div class="flex justify-end space-x-3">
+            <button
+              type="button"
+              class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+              onclick={() => showForm = false}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+            >
+              Create Show
+            </button>
+          </div>
+        </div>
+      </form>
     </div>
+  {/if}
+
+  <div
+    use:dndzone={{ items: shows }}
+    onconsider={handleDndConsider}
+    onfinalize={handleDndFinalize}
+    class="space-y-4"
+  >
+    {#each shows as show (show.id)}
+      <div class="bg-white rounded-lg shadow p-6 hover:shadow-md transition-shadow">
+        <div class="flex justify-between items-start">
+          <div>
+            <h2 class="text-xl font-semibold text-gray-900">
+              <a href="/shows/{show.id}" class="hover:text-blue-500">
+                {show.title}
+              </a>
+            </h2>
+            {#if show.description}
+              <p class="mt-1 text-gray-600">{show.description}</p>
+            {/if}
+          </div>
+          <div class="flex space-x-2">
+            <button
+              class="text-red-500 hover:text-red-600"
+              onclick={() => handleDelete(show.id)}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    {/each}
   </div>
 </div>
-
-{#if selectedSketch}
-  <SketchDetails 
-    sketch={selectedSketch} 
-    on:close={handleCloseDetails}
-  />
-{/if}

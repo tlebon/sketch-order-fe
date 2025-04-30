@@ -38,7 +38,7 @@
   }
 </script>
 
-<form on:submit|preventDefault={handleSubmit} class="bg-white p-6 rounded-lg shadow-sm">
+<form onsubmit={(e) => { e.preventDefault(); handleSubmit(); }} class="bg-white p-6 rounded-lg shadow-sm">
   <div class="mb-4">
     <label for="title" class="block text-sm font-medium text-gray-700 mb-1">Title</label>
     <input
@@ -82,12 +82,12 @@
         id="cast-input"
         bind:value={castMember}
         placeholder="Enter cast member name"
-        on:keydown={(e) => e.key === 'Enter' && addCastMember()}
+        onkeydown={(e) => e.key === 'Enter' && addCastMember()}
         class="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
       />
       <button
         type="button"
-        on:click={addCastMember}
+        onclick={addCastMember}
         class="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
       >
         Add
@@ -99,7 +99,7 @@
           {member}
           <button
             type="button"
-            on:click={() => removeCastMember(i)}
+            onclick={() => removeCastMember(i)}
             class="text-gray-500 hover:text-gray-700 focus:outline-none"
             aria-label={`Remove ${member} from cast`}
           >

@@ -1,7 +1,11 @@
 import { createClient } from '$lib/server/db';
+import type { PageServerLoad } from './$types';
 
-export async function load() {
+export const load: PageServerLoad = async () => {
   const db = createClient();
-  const sketches = await db.getSketches();
-  return { sketches };
-} 
+  const shows = await db.getSketchShows();
+
+  return {
+    shows
+  };
+}; 

@@ -16,24 +16,33 @@ export const session = sqliteTable('session', {
 	expiresAt: integer('expires_at', { mode: 'timestamp' }).notNull()
 });
 
-export const sketches = sqliteTable('sketches', {
+export const sketchShows = sqliteTable('sketch_shows', {
 	id: text('id').primaryKey(),
 	title: text('title').notNull(),
-	description: text('description').notNull(),
+	description: text('description'),
+	created_at: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+	updated_at: text('updated_at').default(sql`CURRENT_TIMESTAMP`)
+});
+
+export const sketches = sqliteTable('sketches', {
+	id: text('id').primaryKey(),
+	show_id: text('show_id').notNull().references(() => sketchShows.id),
+	title: text('title').notNull(),
+	description: text('description'),
 	duration: integer('duration').notNull(),
 	chars: integer('chars').notNull(),
 	casted: integer('casted').notNull(),
-	locked: integer('locked', { mode: 'boolean' }).notNull().default(false),
+	locked: integer('locked').notNull().default(0),
 	position: integer('position').notNull(),
-	createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
-	updatedAt: text('updated_at').default(sql`CURRENT_TIMESTAMP`)
+	created_at: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+	updated_at: text('updated_at').default(sql`CURRENT_TIMESTAMP`)
 });
 
 export const castMembers = sqliteTable('cast_members', {
 	id: text('id').primaryKey(),
-	sketchId: text('sketch_id').notNull().references(() => sketches.id),
+	sketch_id: text('sketch_id').notNull().references(() => sketches.id),
 	name: text('name').notNull(),
-	createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`)
+	created_at: text('created_at').default(sql`CURRENT_TIMESTAMP`)
 });
 
 export type Session = typeof session.$inferSelect;
