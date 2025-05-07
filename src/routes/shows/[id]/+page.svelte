@@ -47,26 +47,81 @@
     }
   }
 
-  async function handleImport(e: CustomEvent<{ sketches: Sketch[] }>) {
+  async function handleImport(e: CustomEvent<{ importType: 'sketches' | 'techDetails' | 'unknown', data: any[] }>) {
     try {
+      const { importType, data } = e.detail;
+
+      if (importType === 'unknown') {
+        // This case should ideally be handled within CSVImport.svelte by not dispatching
+        // but as a safeguard:
+        console.error('Import type is unknown. Aborting.');
+        alert('Could not determine CSV type. Please check file format.');
+        return;
+      }
+
+      let requestBody;
+      if (importType === 'sketches') {
+        requestBody = {
+          show_id: showId,
+          importType,
+          data: data.map((sketch, index) => ({
+            ...sketch,
+            position: sketches.length + index // Assuming sketches is the current list
+          }))
+        };
+      } else { // techDetails
+        requestBody = {
+          show_id: showId,
+          importType,
+          data // Send raw data objects for techDetails
+        };
+      }
+
       const response = await fetch(`/api/sketches/import`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          show_id: showId, 
-          sketches: e.detail.sketches.map((sketch, index) => ({
-            ...sketch,
-            position: sketches.length + index
-          }))
-        })
+        body: JSON.stringify(requestBody)
       });
       
-      if (!response.ok) throw new Error('Failed to import sketches');
+      if (!response.ok) {
+        const errorResult = await response.json().catch(() => ({ error: 'Failed to import data. Unknown error.' }));
+        throw new Error(errorResult.error || 'Failed to import data');
+      }
       
-      const newSketches = await response.json();
-      sketches = [...sketches, ...newSketches].sort((a,b) => a.position - b.position);
+      const importResults = await response.json();
+
+      if (importType === 'sketches') {
+        const newSketches = importResults
+          .filter((r: { success: boolean; sketch?: Sketch }) => r.success && r.sketch)
+          .map((r: { sketch: Sketch }) => r.sketch);
+        
+        if (newSketches.length > 0) {
+          sketches = [...sketches, ...newSketches].sort((a,b) => a.position - b.position);
+          alert(`${newSketches.length} sketch(es) imported successfully.`);
+        } else {
+          // Check for partial success or specific errors reported in importResults
+          const errors = importResults.filter((r: { success: boolean }) => !r.success);
+          if (errors.length > 0) {
+            alert(`Import partially failed. ${errors.length} sketch(es) had issues. Check console for details.`);
+            console.error('Sketch import errors:', errors);
+          } else {
+            alert('No new sketches were imported. The file might have been empty or all rows failed.');
+          }
+        }
+      } else { // techDetails
+        const successfulTechUpdates = importResults.filter((r: { success: boolean }) => r.success).length;
+        const failedTechUpdates = importResults.length - successfulTechUpdates;
+        alert(`Tech details import complete. ${successfulTechUpdates} successful, ${failedTechUpdates} failed. Check console for details.`);
+        if (failedTechUpdates > 0) {
+            console.error('Tech detail import issues:', importResults.filter((r: { success: boolean }) => !r.success));
+        }
+        // Reload sketches to see updated tech details
+        await loadSketches(); 
+      }
+
     } catch (error) {
-      console.error('Error importing sketches:', error);
+      console.error('Error importing data:', error);
+      alert(`Error during import: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 

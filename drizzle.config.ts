@@ -3,10 +3,10 @@ import type { Config } from 'drizzle-kit';
 export default {
 	schema: './src/lib/server/db/schema.ts',
 	out: './drizzle',
-	driver: 'd1-http',
+	dialect: 'sqlite',
 	dbCredentials: {
-		accountId: process.env.CF_ACCOUNT_ID || '',
-		databaseId: process.env.CF_DB_ID || '',
-		token: process.env.CF_API_TOKEN || ''
-	}
+		url: './sketches.db',
+	},
+	verbose: true,
+	strict: true
 } satisfies Config;

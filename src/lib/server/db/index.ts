@@ -1,7 +1,7 @@
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import Database from 'better-sqlite3';
-import { sketches, sketchShows, characterPerformers } from './schema';
-import { sql } from 'drizzle-orm';
+import { sketches, sketchShows, characterPerformers, sketchTechDetails, type NewSketchTechDetails } from './schema';
+import { sql, eq } from 'drizzle-orm';
 import { join } from 'path';
 
 // Initialize SQLite database for local development
@@ -85,39 +85,131 @@ export function createClient() {
     },
 
     async deleteSketchShow(id: string) {
-      await db.delete(sketchShows).where(sql`id = ${id}`);
+      // Use a transaction to ensure atomicity
+      await db.transaction(async (tx) => {
+        // 1. Get all sketch IDs for the given show_id
+        const sketchIdsToDelete = await tx
+          .select({ id: sketches.id })
+          .from(sketches)
+          .where(eq(sketches.show_id, id));
+
+        if (sketchIdsToDelete.length > 0) {
+          const ids = sketchIdsToDelete.map(s => s.id);
+
+          // 2. For each sketch_id, delete associated data
+          // Delete from characterPerformers
+          await tx
+            .delete(characterPerformers)
+            .where(sql`sketch_id IN (${sql.join(ids, sql`, `)})`);
+          
+          // Delete from sketchTechDetails
+          await tx
+            .delete(sketchTechDetails)
+            .where(sql`sketch_id IN (${sql.join(ids, sql`, `)})`);
+
+          // Delete from sketches
+          await tx
+            .delete(sketches)
+            .where(sql`show_id = ${id}`);
+        }
+        
+        // 3. Finally, delete the show itself
+        await tx
+          .delete(sketchShows)
+          .where(sql`id = ${id}`);
+      });
     },
 
     // Sketch operations
     async getSketches(showId: string | undefined) {
-      const sketchRows = await db
-        .select()
+      const query = db
+        .select({
+          // select all columns from sketches
+          id: sketches.id,
+          show_id: sketches.show_id,
+          title: sketches.title,
+          description: sketches.description,
+          duration: sketches.duration,
+          chars: sketches.chars,
+          casted: sketches.casted,
+          locked: sketches.locked,
+          position: sketches.position,
+          raw_data: sketches.raw_data,
+          created_at: sketches.created_at,
+          updated_at: sketches.updated_at,
+          // select tech details
+          tech_id: sketchTechDetails.id,
+          tech_cues: sketchTechDetails.cues,
+          tech_props: sketchTechDetails.props,
+          tech_costume: sketchTechDetails.costume,
+          tech_stage_dressing: sketchTechDetails.stage_dressing,
+          tech_created_at: sketchTechDetails.created_at,
+          tech_updated_at: sketchTechDetails.updated_at
+        })
         .from(sketches)
-        .where(showId ? sql`show_id = ${showId}` : sql`1=1`)
+        .leftJoin(sketchTechDetails, eq(sketches.id, sketchTechDetails.sketch_id))
         .orderBy(sketches.position);
+
+      if (showId) {
+        query.where(eq(sketches.show_id, showId));
+      } else {
+        query.where(sql`1=1`); // Keep this if no showId to fetch all, or adjust as needed
+      }
       
-      if (sketchRows.length === 0) {
+      const rows = await query;
+
+      if (rows.length === 0) {
         return [];
       }
 
+      const sketchIds = rows.map(r => r.id);
       const characterPerformerRows = await db
         .select()
         .from(characterPerformers)
-        .where(sql`sketch_id IN (${sql.join(sketchRows.map(s => s.id), sql`, `)})`);
+        .where(sql`sketch_id IN (${sql.join(sketchIds, sql`, `)})`);
       
-      return sketchRows.map(sketch => ({
-        ...sketch,
-        character_performers: characterPerformerRows
-          .filter(cp => cp.sketch_id === sketch.id)
-          .map(cp => ({
-            id: cp.id,
-            sketch_id: cp.sketch_id,
-            character_name: cp.character_name,
-            performer_name: cp.performer_name,
-            created_at: cp.created_at,
-            updated_at: cp.updated_at
-          }))
-      }));
+      return rows.map(row => {
+        const sketchPart = {
+          id: row.id,
+          show_id: row.show_id,
+          title: row.title,
+          description: row.description,
+          duration: row.duration,
+          chars: row.chars,
+          casted: row.casted,
+          locked: row.locked,
+          position: row.position,
+          raw_data: row.raw_data,
+          created_at: row.created_at,
+          updated_at: row.updated_at
+        };
+
+        const techDetailsPart = row.tech_id ? {
+          id: row.tech_id,
+          sketch_id: row.id, // sketch_id for techDetails is the sketch's id
+          cues: row.tech_cues,
+          props: row.tech_props,
+          costume: row.tech_costume,
+          stage_dressing: row.tech_stage_dressing,
+          created_at: row.tech_created_at,
+          updated_at: row.tech_updated_at
+        } : null;
+
+        return {
+          ...sketchPart,
+          techDetails: techDetailsPart,
+          character_performers: characterPerformerRows
+            .filter(cp => cp.sketch_id === row.id)
+            .map(cp => ({
+              id: cp.id,
+              sketch_id: cp.sketch_id,
+              character_name: cp.character_name,
+              performer_name: cp.performer_name,
+              created_at: cp.created_at,
+              updated_at: cp.updated_at
+            }))
+        };
+      });
     },
 
     async createSketch(data: {
@@ -204,6 +296,11 @@ export function createClient() {
           .delete(characterPerformers)
           .where(sql`sketch_id = ${id}`);
         
+        // Second, delete associated sketch tech details
+        await tx
+          .delete(sketchTechDetails)
+          .where(sql`sketch_id = ${id}`);
+        
         // Then, delete the sketch itself
         await tx
           .delete(sketches)
@@ -257,6 +354,34 @@ export function createClient() {
       }
 
       return this.getSketches(id);
+    },
+
+    // New function to upsert sketch tech details
+    async upsertSketchTechDetails(data: NewSketchTechDetails) {
+      const now = new Date().toISOString();
+      const finalData = {
+        ...data,
+        id: data.id || crypto.randomUUID(), // Ensure ID exists for insert
+        created_at: now, // Set created_at for new entries
+        updated_at: now  // Always update updated_at
+      };
+
+      // Drizzle ORM's way to do an "upsert" for SQLite:
+      // Insert the new row. If a conflict occurs on the sketch_id (because it's unique),
+      // then update the existing row.
+      return await db.insert(sketchTechDetails)
+        .values(finalData)
+        .onConflictDoUpdate({
+          target: sketchTechDetails.sketch_id, // Conflict target
+          set: { // Fields to update on conflict
+            cues: finalData.cues,
+            props: finalData.props,
+            costume: finalData.costume,
+            stage_dressing: finalData.stage_dressing,
+            updated_at: now // Ensure updated_at is set on update
+          }
+        })
+        .returning();
     }
   };
 }

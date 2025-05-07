@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { text, integer, sqliteTable } from 'drizzle-orm/sqlite-core';
+import { text, integer, sqliteTable, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
 export const user = sqliteTable('user', {
 	id: text('id').primaryKey(),
@@ -39,6 +39,19 @@ export const sketches = sqliteTable('sketches', {
 	updated_at: text('updated_at').default(sql`CURRENT_TIMESTAMP`)
 });
 
+export const sketchTechDetails = sqliteTable('sketch_tech_details', {
+	id: text('id').primaryKey(),
+	sketch_id: text('sketch_id').notNull().references(() => sketches.id),
+	cues: text('cues'),
+	props: text('props'),
+	costume: text('costume'),
+	stage_dressing: text('stage_dressing'),
+	created_at: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+	updated_at: text('updated_at').default(sql`CURRENT_TIMESTAMP`)
+}, (table) => ({
+	sketchIdx: uniqueIndex('sketch_tech_details_sketch_id_idx').on(table.sketch_id),
+}));
+
 export const castMembers = sqliteTable('cast_members', {
 	id: text('id').primaryKey(),
 	sketch_id: text('sketch_id').notNull().references(() => sketches.id),
@@ -58,3 +71,15 @@ export const characterPerformers = sqliteTable('character_performers', {
 export type Session = typeof session.$inferSelect;
 
 export type User = typeof user.$inferSelect;
+
+export type Sketch = typeof sketches.$inferSelect & { 
+	techDetails?: typeof sketchTechDetails.$inferSelect | null 
+};
+
+export type CharacterPerformer = typeof characterPerformers.$inferSelect;
+
+export type NewSketch = typeof sketches.$inferInsert;
+
+export type NewCharacterPerformer = typeof characterPerformers.$inferInsert;
+
+export type NewSketchTechDetails = typeof sketchTechDetails.$inferInsert;

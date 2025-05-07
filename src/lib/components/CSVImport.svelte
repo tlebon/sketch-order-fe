@@ -6,19 +6,72 @@
   let fileInput: HTMLInputElement;
   let isDragging = false;
 
+  function detectCsvImportType(headers: string[]): 'sketches' | 'techDetails' | 'unknown' {
+    const lowerCaseHeaders = headers.map(h => h.toLowerCase().trim());
+
+    // Tech Details CSV Detection (must contain all specified headers)
+    const techDetailSignatureHeaders = ["sketch", "cues", "props", "costume", "stage dressing"];
+    const hasAllTechHeaders = techDetailSignatureHeaders.every(h => lowerCaseHeaders.includes(h));
+    if (hasAllTechHeaders) {
+      return 'techDetails';
+    }
+
+    // Sketches CSV Detection
+    const sketchRequiredHeaders = ["title"];
+    const sketchOptionalKeyHeaders = [
+      "time", "chars", "casted", "rocio", "jacob", "adrian", "vera", "max", 
+      "gusta", "richie", "harry", "connor", "kieran", "chiara", "lari", 
+      "theresa", "cliff", "tim"
+    ];
+
+    const hasRequiredSketchHeaders = sketchRequiredHeaders.every(h => lowerCaseHeaders.includes(h));
+    const hasAtLeastOneOptionalSketchHeader = sketchOptionalKeyHeaders.some(h => lowerCaseHeaders.includes(h));
+
+    if (hasRequiredSketchHeaders && hasAtLeastOneOptionalSketchHeader) {
+      return 'sketches';
+    }
+
+    return 'unknown';
+  }
+
   async function handleImport() {
     const files = fileInput.files;
     if (!files || files.length === 0) return;
 
     try {
       const file = files[0];
-      const data = await readCSVFile(file);
-      const processedSketches = processSketchData(data);
-      dispatch('import', { sketches: processedSketches });
+      // Assuming readCSVFile returns an array of objects, keys being headers.
+      const rawDataObjects = await readCSVFile(file);
+
+      if (!rawDataObjects || rawDataObjects.length === 0) {
+        alert('CSV file is empty or could not be processed.');
+        fileInput.value = ''; // Reset file input
+        return;
+      }
+
+      const headers = Object.keys(rawDataObjects[0]);
+      const importType = detectCsvImportType(headers);
+
+      if (importType === 'unknown') {
+        alert('Could not automatically determine CSV type. Please check the file headers and format. Expected headers for sketches: "title" and at least one of "Time", "chars", etc. Expected headers for tech details: "Sketch", "Cues", "Props", "Costume", "Stage Dressing".');
+        fileInput.value = ''; // Reset file input
+        return;
+      }
+
+      let dataForApi;
+      if (importType === 'sketches') {
+        dataForApi = processSketchData(rawDataObjects);
+      } else { // techDetails
+        // For techDetails, the API expects the array of objects directly from CSV parsing.
+        dataForApi = rawDataObjects;
+      }
+
+      dispatch('import', { importType, data: dataForApi });
       fileInput.value = ''; // Reset file input
     } catch (error) {
       console.error('Error importing CSV:', error);
-      alert('Error importing CSV file. Please check the file format.');
+      alert('Error importing CSV file. Please check the file format and content.');
+      fileInput.value = ''; // Reset file input
     }
   }
 

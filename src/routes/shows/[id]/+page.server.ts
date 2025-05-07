@@ -16,6 +16,9 @@ export const load: PageServerLoad = async ({ params }) => {
 
   const sketches = await db.getSketches(id);
 
+  // TEMPORARY LOGGING: REMOVED
+  // console.log(`Sketches for show ${id} from +page.server.ts:`, JSON.stringify(sketches, null, 2));
+
   return {
     show,
     sketches

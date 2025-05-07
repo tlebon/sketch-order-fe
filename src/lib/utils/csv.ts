@@ -1,3 +1,5 @@
+import Papa from 'papaparse';
+
 export interface SketchData {
   id: string;
   title: string;
@@ -11,18 +13,29 @@ export interface SketchData {
 }
 
 export function parseCSV(csvText: string): Record<string, string>[] {
-  const lines = csvText.split('\n').map(line => line.trim()).filter(Boolean);
-  if (lines.length < 2) return [];
-  
-  const headers = lines[0].split(',').map(header => header.trim().toLowerCase());
-  
-  return lines.slice(1).map(line => {
-    const values = line.split(',').map(value => value.trim());
-    return headers.reduce((obj, header, index) => {
-      obj[header] = values[index] || '';
-      return obj;
-    }, {} as Record<string, string>);
+  const result = Papa.parse(csvText, {
+    header: true,        
+    skipEmptyLines: true,  
+    transformHeader: header => header.trim().toLowerCase(), 
+    dynamicTyping: false,  
+    transform: (value) => value.trim()
   });
+
+  if (result.errors.length > 0) {
+    console.error("CSV Parsing Errors with Papaparse:", result.errors);
+    // Filter out rows that might be null, undefined, or genuinely empty objects.
+    const validData = result.data.filter(
+      row => row && typeof row === 'object' && Object.keys(row).length > 0
+    );
+    return validData as Record<string, string>[]; 
+  }
+
+  // Ensure all data returned is in the expected Record<string, string>[] format
+  // Papaparse with header:true should produce this, but an explicit cast can be safer
+  // if there are rows that are not objects (e.g. if skipEmptyLines didn't catch everything)
+  return result.data.filter(
+    row => row && typeof row === 'object' && Object.keys(row).length > 0
+  ) as Record<string, string>[];
 }
 
 export function processSketchData(sketchesData: Record<string, string>[]): SketchData[] {

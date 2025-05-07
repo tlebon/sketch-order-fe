@@ -252,6 +252,35 @@
               </ul>
             </div>
           {/if}
+
+          <!-- Tech Details Section -->
+          <div class="tech-details mt-4 pt-4 border-t border-gray-200">
+            <h4 class="text-lg font-semibold text-gray-700 mb-2">Tech Details</h4>
+            {#if sketch.techDetails}
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                <div>
+                  <strong class="text-gray-600">Cues:</strong>
+                  <p class="text-gray-800 whitespace-pre-wrap">{sketch.techDetails.cues || 'N/A'}</p>
+                </div>
+                <div>
+                  <strong class="text-gray-600">Props:</strong>
+                  <p class="text-gray-800 whitespace-pre-wrap">{sketch.techDetails.props || 'N/A'}</p>
+                </div>
+                <div>
+                  <strong class="text-gray-600">Costume:</strong>
+                  <p class="text-gray-800 whitespace-pre-wrap">{sketch.techDetails.costume || 'N/A'}</p>
+                </div>
+                <div>
+                  <strong class="text-gray-600">Stage Dressing:</strong>
+                  <p class="text-gray-800 whitespace-pre-wrap">{sketch.techDetails.stage_dressing || 'N/A'}</p>
+                </div>
+              </div>
+            {:else}
+              <p class="text-gray-500 italic">No tech details available for this sketch.</p>
+            {/if}
+          </div>
+          <!-- End Tech Details Section -->
+
         </div>
       {/if}
     </div>
