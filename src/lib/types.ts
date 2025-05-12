@@ -3,8 +3,8 @@ export interface CharacterPerformer {
   sketch_id: string;
   character_name: string;
   performer_name: string;
-  created_at: string;
-  updated_at: string;
+  created_at: string | null;
+  updated_at: string | null;
 }
 
 // Define an interface for the tech details structure
@@ -15,8 +15,8 @@ export interface SketchTechDetails {
   props: string | null;
   costume: string | null;
   stage_dressing: string | null;
-  created_at?: string | null; // Match schema, can be optional on Sketch object if not always joined/present
-  updated_at?: string | null; // Match schema
+  created_at: string | null;
+  updated_at: string | null;
 }
 
 export interface Sketch {
@@ -32,14 +32,14 @@ export interface Sketch {
   created_at: string | null;
   updated_at: string | null;
   character_performers?: CharacterPerformer[];
-  raw_data?: Record<string, string>;
-  techDetails?: SketchTechDetails | null; // Add optional techDetails property
+  raw_data: string | null;
+  techDetails?: SketchTechDetails | null;
 }
 
 export interface SketchShow {
   id: string;
   title: string;
   description?: string;
-  created_at?: string;
-  updated_at?: string;
+  created_at?: string | null;
+  updated_at?: string | null;
 } 

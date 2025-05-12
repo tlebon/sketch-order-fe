@@ -11,14 +11,25 @@
   import ViewList from '@lucide/svelte/icons/list';
   import { dndzone, type DndEventInfo } from 'svelte-dnd-action';
   import { flip } from 'svelte/animate';
+  import type { PageData } from './$types';
+  import PrintSetList from '$lib/components/PrintSetList.svelte';
+  import { fade } from 'svelte/transition';
 
+  export let data: PageData;
   const dispatch = createEventDispatcher();
   const showId = $page.params.id;
-  let sketches: Sketch[] = [];
+  let show = data.show;
+  let sketches = data.sketches;
   let selectedSketch: Sketch | null = null;
   let selectedPerformer: string | null = null;
   let viewMode: 'grid' | 'list' = 'grid';
   const flipDurationMs = 300;
+  let showPrintView = false;
+  let printVersion: 'greenroom' | 'hallway' | 'techbooth' = 'techbooth';
+
+  $: performers = [...new Set(sketches.flatMap(sketch => 
+    sketch.character_performers?.map(cp => cp.performer_name) || []
+  ))].sort();
 
   $: filteredSketches = sketches.filter(sketch => 
     !selectedPerformer || 
@@ -233,160 +244,199 @@
       if (!response.ok) throw new Error('Failed to load sketches');
       const fetchedSketches = await response.json();
       sketches = fetchedSketches
-          .map((s: Sketch, index: number) => ({ ...s, position: s.position ?? index }))
+          .map((s: any) => ({ 
+            ...s, 
+            position: s.position ?? 0,
+            locked: Boolean(s.locked) // Convert number to boolean
+          }))
           .sort((a: Sketch, b: Sketch) => a.position - b.position);
     } catch (error) {
       console.error('Error loading sketches:', error);
       sketches = [];
     }
   }
+
+  function handlePrint() {
+    showPrintView = true;
+    // Use setTimeout to ensure the print view is rendered before printing
+    setTimeout(() => {
+      window.print();
+      showPrintView = false;
+    }, 100);
+  }
 </script>
 
-<div class="p-4 sm:p-6 md:p-8 max-w-7xl mx-auto flex gap-6">
-  <!-- Sidebar -->
-  <div class="w-64 flex-shrink-0 space-y-6 bg-gray-50 p-4 rounded-lg shadow">
-    <h2 class="text-xl font-semibold text-gray-700 border-b pb-2">Controls</h2>
-    <div>
-      <h3 class="text-lg font-medium mb-2 text-gray-600">Filter</h3>
-      <PerformerFilter
-        bind:selectedPerformer
-        performers={sketches.flatMap(s => s.character_performers?.map(cp => cp.performer_name) || [])}
-      />
-    </div>
-    <div>
-        <h3 class="text-lg font-medium mb-2 text-gray-600">Import</h3>
-      <CSVImport on:import={handleImport} />
-    </div>
-    <div>
-      <h3 class="text-lg font-medium mb-2 text-gray-600">Create New</h3>
-      <SketchForm on:submit={handleCreate} />
-    </div>
-  </div>
-
-  <!-- Main Content -->
-  <div class="flex-grow">
-    <div class="flex justify-between items-center mb-6 border-b pb-3">
-        <h1 class="text-3xl font-bold text-gray-800">Show Management</h1>
-        <div class="flex space-x-1 border border-gray-300 rounded-md p-0.5">
-            <button 
-              on:click={() => viewMode = 'grid'}
-              class="p-1 rounded-md {viewMode === 'grid' ? 'bg-blue-100 text-blue-700' : 'text-gray-500 hover:bg-gray-100'}"
-              aria-label="Grid View"
-              title="Grid View"
-            >
-                <ViewGrid size={20} />
-            </button>
-            <button 
-              on:click={() => viewMode = 'list'}
-              class="p-1 rounded-md {viewMode === 'list' ? 'bg-blue-100 text-blue-700' : 'text-gray-500 hover:bg-gray-100'}"
-              aria-label="List View"
-              title="List View"
-            >
-                <ViewList size={20} />
-            </button>
+{#if showPrintView}
+  <PrintSetList {sketches} showTitle={show.title} version={printVersion} />
+{:else}
+  <div class="show-page">
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <h1>{show.title}</h1>
+        <div class="print-controls">
+          <select bind:value={printVersion}>
+            <option value="greenroom">Green Room Version</option>
+            <option value="hallway">Hallway Version</option>
+            <option value="techbooth">Tech Booth Version</option>
+          </select>
+          <button on:click={handlePrint} class="print-button">
+            Print Set List
+          </button>
         </div>
+      </div>
+      <div class="sidebar-content">
+        <PerformerFilter {performers} bind:selectedPerformer />
+        <CSVImport showId={show.id} on:importComplete={loadSketches} />
+      </div>
     </div>
-    
-    <div class="flex gap-6">
-      <!-- Sketch List Area -->
-      <div class="flex-grow">
-        {#if viewMode === 'grid'}
-          <div 
-            use:dndzone={{
-              items: filteredSketches, 
-              flipDurationMs, 
-              type: 'sketch'
-            }}
-            on:consider={handleDndConsider}
-            on:finalize={handleDndFinalize}
-            class="sketch-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
-          >
-            {#each filteredSketches as sketch (sketch.id)}
-              <div 
-                animate:flip={{ duration: flipDurationMs }}
-                class="{sketch.locked ? 'opacity-75' : ''}"
-               >
-                <SketchCard
-                  {sketch}
-                  isSelected={selectedSketch?.id === sketch.id}
-                  on:select={(e) => selectedSketch = e.detail.sketch}
-                  on:lock={handleLock}
-                  on:delete={handleDelete}
-                  />
-              </div>
-            {/each}
-          </div>
-        {:else} <!-- List View -->
-          <div 
-            use:dndzone={{
-              items: filteredSketches, 
-              flipDurationMs, 
-              type: 'sketch'
-            }}
-            on:consider={handleDndConsider}
-            on:finalize={handleDndFinalize}
-            class="sketch-list space-y-2"
-          >
-            {#each filteredSketches as sketch (sketch.id)}
-              <div 
-                animate:flip={{ duration: flipDurationMs }} 
-                class="sketch-list-item flex items-center justify-between p-3 bg-white rounded shadow border border-gray-200 {sketch.locked ? 'bg-gray-100 opacity-75' : 'cursor-grab'}"
-              >
-                 <div class="flex items-center space-x-3">
-                   <span class="text-gray-500 font-mono text-sm w-6 text-right">{sketch.position + 1}.</span>
-                   <span class="font-medium text-gray-800">{sketch.title}</span>
-                </div>
-                 <div class="flex items-center space-x-2">
-                    <span class="text-sm text-gray-500">{sketch.duration} min</span>
-                     <button 
-                        class="text-gray-400 hover:text-gray-600 p-1 rounded {selectedSketch?.id === sketch.id ? 'bg-blue-100' : ''}"
-                        title="Select Sketch"
-                        on:click|stopPropagation={() => selectedSketch = sketch} 
-                     >
-                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
-                     </button>
-                     <button 
-                        class="text-gray-400 hover:text-red-500 p-1 rounded disabled:opacity-50 disabled:cursor-not-allowed"
-                        title="Delete Sketch"
-                        on:click|stopPropagation={() => handleDelete({ detail: { id: sketch.id } })}
-                        disabled={sketch.locked}
-                     >
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                     </button>
-                 </div>
-              </div>
-            {/each}
-          </div>
-        {/if}
+
+    <div class="content">
+      <div class="view-controls">
+        <button 
+          class="view-button" 
+          class:active={viewMode === 'grid'} 
+          on:click={() => viewMode = 'grid'}
+        >
+          <ViewGrid size={20} />
+        </button>
+        <button 
+          class="view-button" 
+          class:active={viewMode === 'list'} 
+          on:click={() => viewMode = 'list'}
+        >
+          <ViewList size={20} />
+        </button>
       </div>
 
-      <!-- Sketch Details (if selected) -->
-      {#if selectedSketch}
-        <div class="w-1/3 flex-shrink-0">
-            <h2 class="text-xl font-semibold mb-4 text-gray-700">Sketch Details</h2>
-           <SketchDetails
-              sketch={selectedSketch}
-              on:update={handleUpdate}
-              on:close={() => selectedSketch = null}
-            />
+      {#if viewMode === 'grid'}
+        <div class="sketches-grid">
+          {#each filteredSketches as sketch (sketch.id)}
+            <div transition:fade>
+              <SketchCard {sketch} on:update={loadSketches} />
+            </div>
+          {/each}
+        </div>
+      {:else}
+        <div class="sketches-list" use:dndzone={{items: filteredSketches, flipDurationMs}} on:consider={handleDndConsider} on:finalize={handleDndFinalize}>
+          {#each filteredSketches as sketch (sketch.id)}
+            <div class="sketch-list-item" animate:flip={{duration: flipDurationMs}}>
+              <SketchCard {sketch} on:update={loadSketches} />
+            </div>
+          {/each}
         </div>
       {/if}
     </div>
   </div>
-</div>
+{/if}
 
 <style>
-  /* Removed old styles for .show-page, .header, .content, .sketch-list */
-  /* Basic styles for sketch-grid might still be useful if not fully covered by Tailwind */
-  .sketch-grid {
-    /* Add any non-Tailwind grid styles if needed */
+  .show-page {
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
   }
 
-  /* Keep drag-related styles */
+  .sidebar {
+    width: 300px;
+    background: #f8f9fa;
+    border-right: 1px solid #e9ecef;
+    display: flex;
+    flex-direction: column;
+    padding: 1rem;
+  }
+
+  .sidebar-header {
+    margin-bottom: 1rem;
+  }
+
+  .sidebar-header h1 {
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .sidebar-content {
+    flex: 1;
+    overflow-y: auto;
+  }
+
+  .content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem;
+  }
+
+  .view-controls {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .view-button {
+    padding: 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .view-button.active {
+    background: #e9ecef;
+  }
+
+  .print-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+
+  select {
+    padding: 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background: white;
+  }
+
+  .print-button {
+    padding: 0.5rem 1rem;
+    background: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
+
+  .print-button:hover {
+    background: #45a049;
+  }
+
+  .sketches-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+  }
+
+  .sketches-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
   .sketch-list-item {
     transition: background-color 0.2s ease-in-out;
   }
+
   .sketch-list-item:hover {
-     background-color: #f9fafb; /* Slightly lighter gray on hover */
+    background-color: #f9fafb;
+  }
+
+  @media print {
+    .show-page {
+      display: none;
+    }
   }
 </style> 

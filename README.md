@@ -1,5 +1,11 @@
 # sv
 
+TODOS:
+1. print setlist
+2. sort setlist using external order
+3. lock sketches in place
+4. ???
+
 Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
 
 ## Creating a project

@@ -177,7 +177,7 @@ export function createClient() {
           duration: row.duration,
           chars: row.chars,
           casted: row.casted,
-          locked: row.locked,
+          locked: Boolean(row.locked),
           position: row.position,
           raw_data: row.raw_data,
           created_at: row.created_at,
@@ -186,7 +186,7 @@ export function createClient() {
 
         const techDetailsPart = row.tech_id ? {
           id: row.tech_id,
-          sketch_id: row.id, // sketch_id for techDetails is the sketch's id
+          sketch_id: row.id,
           cues: row.tech_cues,
           props: row.tech_props,
           costume: row.tech_costume,
