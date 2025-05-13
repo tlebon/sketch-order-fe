@@ -1,6 +1,7 @@
 <script lang="ts">
   import { dndzone } from 'svelte-dnd-action';
   import type { PageData } from './$types';
+  import { Trash2 } from 'lucide-icons';
 
   const { data } = $props();
 
@@ -128,9 +129,9 @@
             <textarea
               id="description"
               bind:value={newShow.description}
-              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
               rows="3"
-            />
+            ></textarea>
           </div>
           <div class="flex justify-end space-x-3">
             <button
@@ -175,10 +176,9 @@
             <button
               class="text-red-500 hover:text-red-600"
               onclick={() => handleDelete(show.id)}
+              aria-label="Delete show"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
-              </svg>
+              <Trash2 size={20} />
             </button>
           </div>
         </div>

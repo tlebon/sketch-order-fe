@@ -4,5 +4,10 @@ import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
 	plugins: [tailwindcss(), sveltekit()],
-	base: '/sketch-order-fe/'
+	base: process.env.NODE_ENV === 'production' ? '/sketch-order-fe/' : '/',
+	build: {
+		rollupOptions: {
+			external: ['svelte-dnd-action']
+		}
+	}
 });

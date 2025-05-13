@@ -20,8 +20,8 @@
     // Sketches CSV Detection
     const sketchRequiredHeaders = ["title"];
     const sketchOptionalKeyHeaders = [
-      "time", "chars", "casted", "rocio", "jacob", "adrian", "vera", "max", 
-      "gusta", "richie", "harry", "connor", "kieran", "chiara", "lari", 
+      "time", "chars", "casted", "rocio", "jacob", "adrian", "vera", "max",
+      "gusta", "richie", "harry", "connor", "kieran", "chiara", "lari",
       "theresa", "cliff", "tim"
     ];
 
@@ -89,7 +89,7 @@
   function handleDrop(event: DragEvent) {
     event.preventDefault();
     isDragging = false;
-    
+
     const files = event.dataTransfer?.files;
     if (files && files.length > 0) {
       fileInput.files = files;
@@ -107,9 +107,9 @@
   class:border-dashed={isDragging}
   class:border-blue-500={isDragging}
 >
-  <h2 class="text-lg font-medium text-gray-900 mb-4">Import Running Order from CSV</h2>
-  
-  <div class="space-y-4">
+  <h2 class="text-lg font-medium text-gray-900 mb-4">Import Running Order</h2>
+
+  <div class="space-y-6">
     <div class="flex items-center justify-center w-full">
       <label
         for="csv-file"
@@ -149,9 +149,9 @@
     <button
       type="button"
       onclick={handleImport}
-      class="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+      class="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 mt-2"
     >
-      Import Running Order
+      Upload CSV
     </button>
   </div>
-</div> 
+</div>

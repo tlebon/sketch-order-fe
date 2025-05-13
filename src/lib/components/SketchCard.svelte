@@ -63,9 +63,10 @@
           <AlertTriangle class="warning-icon" size={16} />
         {/if}
       </div>
-      <div class="flex items-center space-x-1">
+      <div class="flex items-center gap-0.5">
         <button
-          class="p-1 text-gray-400 hover:text-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-blue-400"
+          class="action-button lock-button"
+          class:locked={sketch.locked}
           on:click={handleLock}
           aria-label={sketch.locked ? 'Unlock sketch' : 'Lock sketch'}
           title={sketch.locked ? 'Unlock sketch' : 'Lock sketch'}
@@ -77,7 +78,7 @@
           {/if}
         </button>
         <button
-          class="p-1 text-gray-400 hover:text-red-500 rounded focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-red-400"
+          class="action-button delete-button"
           on:click={handleDelete}
           aria-label="Delete sketch"
           title="Delete sketch"
@@ -86,11 +87,11 @@
         </button>
       </div>
     </div>
-    
+
     <p class="description text-sm text-gray-600 mb-3 line-clamp-1" title={sketch.description || 'A sketch waiting for its story...'}>
       {sketch.description || 'A sketch waiting for its story...'}
     </p>
-    
+
     <div class="stats text-xs text-gray-500 space-x-3 mb-3">
       <span>Duration: {sketch.duration} min</span>
       <span>Chars: {sketch.chars}</span>
@@ -105,7 +106,7 @@
 
   {#if sketch.character_performers && sketch.character_performers.length > 0}
     <div class="border-t border-gray-200 px-4 py-2">
-        <button 
+        <button
             class="cast-toggle text-sm text-blue-600 hover:text-blue-800 font-medium focus:outline-none w-full text-left flex justify-between items-center"
             on:click={toggleCastVisibility}
             aria-expanded={isCastVisible}
@@ -138,4 +139,28 @@
   .warning-icon {
     color: #f59e0b;
   }
-</style> 
+
+  .action-button {
+    background: none;
+    border: none;
+    padding: 0.25rem;
+    cursor: pointer;
+    color: #6b7280;
+    transition: color 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .action-button:hover {
+    color: #374151;
+  }
+
+  .lock-button.locked {
+    color: #374151;
+  }
+
+  .delete-button:hover {
+    color: #ef4444;
+  }
+</style>

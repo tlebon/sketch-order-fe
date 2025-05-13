@@ -407,12 +407,9 @@
         <button
           class="text-gray-600 hover:text-gray-900"
           on:click={() => window.print()}
+          aria-label="Print set list"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
-            <polyline points="6 9 6 2 18 2 18 9"/>
-            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
-            <rect width="12" height="8" x="6" y="14"/>
-          </svg>
+          <Printer size={20} />
         </button>
       </div>
     </div>
@@ -463,7 +460,9 @@
       </div>
       <div class="sidebar-content">
         <PerformerFilter {performers} bind:selectedPerformer />
-        <CSVImport showId={show.id} on:importComplete={loadSketches} />
+        <div class="mt-4">
+          <CSVImport showId={show.id} on:importComplete={loadSketches} />
+        </div>
       </div>
       {#if isSidebarCollapsed}
         <div class="collapsed-buttons">
@@ -585,11 +584,19 @@
               on:dragleave={handleDragLeave}
               on:drop={(e) => handleDrop(e, index)}
               on:dragend={handleDragEnd}
+              role="listitem"
             >
               <div class="list-item-header">
                 <div class="list-item-main">
                   <span class="position">{sketch.position + 1}.</span>
-                  <span class="title" on:click={() => selectedSketch = sketch}>{sketch.title}</span>
+                  <button
+                    class="title"
+                    on:click={() => selectedSketch = sketch}
+                    on:keydown={(e) => e.key === 'Enter' && (selectedSketch = sketch)}
+                    aria-label={`View details for ${sketch.title}`}
+                  >
+                    {sketch.title}
+                  </button>
                   {#if hasCharacterMismatch(sketch)}
                     <AlertTriangle class="warning-icon" size={16} />
                   {/if}
@@ -599,14 +606,28 @@
                       class="action-button lock-button"
                       class:locked={sketch.locked}
                       on:click|stopPropagation={() => handleLockClick(sketch.id, !sketch.locked)}
+                      aria-label={sketch.locked ? 'Unlock sketch' : 'Lock sketch'}
+                      title={sketch.locked ? 'Unlock sketch' : 'Lock sketch'}
                     >
-                      {sketch.locked ? '🔒' : '🔓'}
+                      {#if sketch.locked}
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                          <path fill-rule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clip-rule="evenodd" />
+                        </svg>
+                      {:else}
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M8 11V7a4 4 0 118 0m-4 8v3m-6 2h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
+                        </svg>
+                      {/if}
                     </button>
                     <button
                       class="action-button delete-button"
                       on:click|stopPropagation={() => handleDeleteClick(sketch.id)}
+                      aria-label="Delete sketch"
+                      title="Delete sketch"
                     >
-                      🗑️
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
                     </button>
                   </div>
                 </div>
@@ -674,6 +695,7 @@
               on:dragleave={handleDragLeave}
               on:drop={(e) => handleDrop(e, index)}
               on:dragend={handleDragEnd}
+              role="listitem"
             >
               <SketchCard
                 {sketch}
@@ -687,8 +709,19 @@
       {/if}
 
       {#if selectedSketch}
-        <div class="modal-backdrop" on:click={() => selectedSketch = null}>
-          <div class="modal-content" on:click|stopPropagation>
+        <div
+          class="modal-backdrop"
+          on:click={() => selectedSketch = null}
+          on:keydown={(e) => e.key === 'Escape' && (selectedSketch = null)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Sketch details"
+        >
+          <div
+            class="modal-content"
+            on:click|stopPropagation
+            role="document"
+          >
             <SketchDetails
               sketch={selectedSketch}
               on:close={() => selectedSketch = null}
@@ -772,6 +805,13 @@
   .sidebar-content {
     flex: 1;
     overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .sidebar-content :global(.csv-import) {
+    margin: 0;
   }
 
   .content {
@@ -867,21 +907,43 @@
   .sketches-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 1.5rem;
+    gap: 1rem;
+    padding: 1rem;
   }
 
   .sketches-list {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: 0.5rem;
+    padding: 1rem;
   }
 
   .sketch-list-item {
     transition: background-color 0.2s ease-in-out;
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.5rem;
   }
 
   .sketch-list-item:hover {
-    background-color: #f9fafb;
+    background: #f8fafc;
+  }
+
+  .sketch-list-item.locked {
+    opacity: 0.8;
+    cursor: not-allowed;
+  }
+
+  .sketch-list-item.locked:hover {
+    background: #f8fafc;
+  }
+
+  .sketch-list-item.dragging {
+    opacity: 0.5;
+  }
+
+  .sketch-list-item.drag-over {
+    border-top: 2px solid #3b82f6;
   }
 
   @media print {
@@ -987,17 +1049,19 @@
     border: none;
     padding: 0.25rem;
     cursor: pointer;
-    font-size: 1rem;
-    opacity: 0.6;
-    transition: opacity 0.2s;
+    color: #6b7280;
+    transition: color 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .action-button:hover {
-    opacity: 1;
+    color: #374151;
   }
 
   .lock-button.locked {
-    opacity: 1;
+    color: #374151;
   }
 
   .delete-button:hover {
@@ -1015,7 +1079,7 @@
   .grid-view {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 1.5rem;
+    gap: 1rem;
     padding: 1rem;
   }
 
@@ -1146,7 +1210,7 @@
   }
 
   .sketch-list-item.locked:hover {
-    background: #f9fafb;
+    background: #f8fafc;
   }
 
   .list-item.dragging {
