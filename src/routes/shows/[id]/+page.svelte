@@ -1,7 +1,7 @@
 <script lang="ts">
   import { page } from '$app/stores';
   import { createEventDispatcher, onMount } from 'svelte';
-  import type { Sketch } from '$lib/types';
+  import type { Sketch, SketchTechDetails } from '$lib/types';
   import PerformerFilter from '$lib/components/PerformerFilter.svelte';
   import CSVImport from '$lib/components/CSVImport.svelte';
   import SketchForm from '$lib/components/SketchForm.svelte';
@@ -9,6 +9,7 @@
   import SketchDetails from '$lib/components/SketchDetails.svelte';
   import ViewGrid from '@lucide/svelte/icons/layout-grid';
   import ViewList from '@lucide/svelte/icons/list';
+  import AlertTriangle from '@lucide/svelte/icons/alert-triangle';
   import { dndzone, type DndEventInfo } from 'svelte-dnd-action';
   import { flip } from 'svelte/animate';
   import type { PageData } from './$types';
@@ -19,22 +20,29 @@
   const dispatch = createEventDispatcher();
   const showId = $page.params.id;
   let show = data.show;
-  let sketches = data.sketches;
+  let sketches: Sketch[] = data.sketches;
   let selectedSketch: Sketch | null = null;
   let selectedPerformer: string | null = null;
-  let viewMode: 'grid' | 'list' = 'grid';
+  let viewMode: 'grid' | 'list' = 'list';
   const flipDurationMs = 300;
   let showPrintView = false;
-  let printVersion: 'greenroom' | 'hallway' | 'techbooth' = 'techbooth';
+  let printVersion: 'greenroom' | 'hallway' | 'techbooth' = 'greenroom';
+  let expandedSketchId: string | null = null;
 
-  $: performers = [...new Set(sketches.flatMap(sketch => 
-    sketch.character_performers?.map(cp => cp.performer_name) || []
-  ))].sort();
+  function formatDuration(minutes: number): string {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+  }
 
-  $: filteredSketches = sketches.filter(sketch => 
-    !selectedPerformer || 
-    sketch.character_performers?.some(cp => cp.performer_name === selectedPerformer)
-  ).sort((a, b) => a.position - b.position);
+  $: performers = [...new Set(
+    sketches.flatMap(s => s.character_performers || [])
+      .map(cp => cp.performer_name)
+  )].sort();
+
+  $: filteredSketches = selectedPerformer
+    ? sketches.filter(s => s.character_performers?.some(cp => cp.performer_name === selectedPerformer))
+    : sketches;
 
   onMount(async () => {
     await loadSketches();
@@ -154,6 +162,10 @@
     }
   }
 
+  function handleLockClick(id: string, locked: boolean) {
+    handleLock(new CustomEvent('lock', { detail: { id, locked } }));
+  }
+
   async function handleDelete(e: CustomEvent<{ id: string }> | { detail: { id: string } }) {
     const sketchId = e.detail.id;
     if (!sketchId) return;
@@ -175,6 +187,10 @@
     } catch (error) {
       console.error('Error deleting sketch:', error);
     }
+  }
+
+  function handleDeleteClick(id: string) {
+    handleDelete(new CustomEvent('delete', { detail: { id } }));
   }
 
   async function handleUpdate(e: CustomEvent<{ sketch: Sketch }>) {
@@ -258,16 +274,38 @@
 
   function handlePrint() {
     showPrintView = true;
-    // Use setTimeout to ensure the print view is rendered before printing
     setTimeout(() => {
       window.print();
       showPrintView = false;
     }, 100);
   }
+
+  function toggleSketchExpand(sketchId: string) {
+    expandedSketchId = expandedSketchId === sketchId ? null : sketchId;
+  }
+
+  function hasCharacterMismatch(sketch: Sketch): boolean {
+    const performerCount = sketch.character_performers?.length || 0;
+    return performerCount !== sketch.chars;
+  }
 </script>
 
 {#if showPrintView}
-  <PrintSetList {sketches} showTitle={show.title} version={printVersion} />
+  <div class="print-preview">
+    <div class="print-preview-header">
+      <div class="header-left">
+        <button class="back-button" on:click={() => showPrintView = false}>
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd" />
+          </svg>
+          Back to Show
+        </button>
+        <h2>Print Preview - {printVersion === 'greenroom' ? 'Green Room' : printVersion === 'hallway' ? 'Hallway' : 'Tech Booth'} Version</h2>
+      </div>
+      <button class="close-button" on:click={() => showPrintView = false}>×</button>
+    </div>
+    <PrintSetList {sketches} showTitle={show.title} version={printVersion} />
+  </div>
 {:else}
   <div class="show-page">
     <div class="sidebar">
@@ -292,37 +330,157 @@
 
     <div class="content">
       <div class="view-controls">
-        <button 
-          class="view-button" 
-          class:active={viewMode === 'grid'} 
-          on:click={() => viewMode = 'grid'}
-        >
-          <ViewGrid size={20} />
-        </button>
-        <button 
-          class="view-button" 
-          class:active={viewMode === 'list'} 
-          on:click={() => viewMode = 'list'}
-        >
-          <ViewList size={20} />
-        </button>
+        <div class="view-buttons">
+          <button 
+            class="view-button" 
+            class:active={viewMode === 'grid'} 
+            on:click={() => viewMode = 'grid'}
+          >
+            <ViewGrid size={20} />
+          </button>
+          <button 
+            class="view-button" 
+            class:active={viewMode === 'list'} 
+            on:click={() => viewMode = 'list'}
+          >
+            <ViewList size={20} />
+          </button>
+        </div>
+        <div class="print-buttons">
+          <button 
+            class="print-view-button" 
+            class:active={showPrintView && printVersion === 'greenroom'} 
+            on:click={() => {
+              printVersion = 'greenroom';
+              showPrintView = true;
+            }}
+          >
+            Green Room
+          </button>
+          <button 
+            class="print-view-button" 
+            class:active={showPrintView && printVersion === 'hallway'} 
+            on:click={() => {
+              printVersion = 'hallway';
+              showPrintView = true;
+            }}
+          >
+            Hallway
+          </button>
+          <button 
+            class="print-view-button" 
+            class:active={showPrintView && printVersion === 'techbooth'} 
+            on:click={() => {
+              printVersion = 'techbooth';
+              showPrintView = true;
+            }}
+          >
+            Tech Booth
+          </button>
+        </div>
       </div>
 
-      {#if viewMode === 'grid'}
-        <div class="sketches-grid">
+      {#if viewMode === 'list'}
+        <div class="list-view" use:dndzone={{items: filteredSketches, flipDurationMs}} on:consider={handleDndConsider} on:finalize={handleDndFinalize}>
           {#each filteredSketches as sketch (sketch.id)}
-            <div transition:fade>
-              <SketchCard {sketch} on:update={loadSketches} />
+            <div class="list-item" class:expanded={expandedSketchId === sketch.id} animate:flip={{duration: flipDurationMs}}>
+              <div class="list-item-header">
+                <div class="list-item-main">
+                  <span class="position">{sketch.position + 1}.</span>
+                  <span class="title" on:click={() => selectedSketch = sketch}>{sketch.title}</span>
+                  {#if hasCharacterMismatch(sketch)}
+                    <AlertTriangle class="warning-icon" size={16} />
+                  {/if}
+                  <span class="duration">{formatDuration(sketch.duration)}</span>
+                  <div class="list-item-actions">
+                    <button 
+                      class="action-button lock-button" 
+                      class:locked={sketch.locked}
+                      on:click|stopPropagation={() => handleLockClick(sketch.id, !sketch.locked)}
+                    >
+                      {sketch.locked ? '🔒' : '🔓'}
+                    </button>
+                    <button 
+                      class="action-button delete-button"
+                      on:click|stopPropagation={() => handleDeleteClick(sketch.id)}
+                    >
+                      🗑️
+                    </button>
+                  </div>
+                </div>
+                <div class="list-item-performers">
+                  {(sketch.character_performers || [])
+                    .map(cp => cp.performer_name)
+                    .join(', ')}
+                  {#if hasCharacterMismatch(sketch)}
+                    <span class="character-count">
+                      ({sketch.character_performers?.length || 0}/{sketch.chars} characters)
+                    </span>
+                  {/if}
+                </div>
+              </div>
+              
+              {#if expandedSketchId === sketch.id}
+                <div class="list-item-details">
+                  {#if sketch.description}
+                    <div class="description">
+                      <strong>Description:</strong> {sketch.description}
+                    </div>
+                  {/if}
+                  
+                  {#if sketch.techDetails}
+                    <div class="tech-details">
+                      {#if sketch.techDetails.costume}
+                        <div class="detail">
+                          <strong>Costume:</strong> {sketch.techDetails.costume}
+                        </div>
+                      {/if}
+                      {#if sketch.techDetails.stage_dressing}
+                        <div class="detail">
+                          <strong>Stage:</strong> {sketch.techDetails.stage_dressing}
+                        </div>
+                      {/if}
+                      {#if sketch.techDetails.cues}
+                        <div class="detail">
+                          <strong>Cues:</strong> {sketch.techDetails.cues}
+                        </div>
+                      {/if}
+                      {#if sketch.techDetails.props}
+                        <div class="detail">
+                          <strong>Props:</strong> {sketch.techDetails.props}
+                        </div>
+                      {/if}
+                    </div>
+                  {/if}
+                </div>
+              {/if}
             </div>
           {/each}
         </div>
       {:else}
-        <div class="sketches-list" use:dndzone={{items: filteredSketches, flipDurationMs}} on:consider={handleDndConsider} on:finalize={handleDndFinalize}>
+        <div class="grid-view" use:dndzone={{items: filteredSketches, flipDurationMs}} on:consider={handleDndConsider} on:finalize={handleDndFinalize}>
           {#each filteredSketches as sketch (sketch.id)}
             <div class="sketch-list-item" animate:flip={{duration: flipDurationMs}}>
-              <SketchCard {sketch} on:update={loadSketches} />
+              <SketchCard 
+                {sketch} 
+                on:update={loadSketches} 
+                on:select={() => selectedSketch = sketch}
+                showCharacterWarning={hasCharacterMismatch(sketch)}
+              />
             </div>
           {/each}
+        </div>
+      {/if}
+
+      {#if selectedSketch}
+        <div class="modal-backdrop" on:click={() => selectedSketch = null}>
+          <div class="modal-content" on:click|stopPropagation>
+            <SketchDetails 
+              sketch={selectedSketch} 
+              on:close={() => selectedSketch = null}
+              on:update={handleUpdate}
+            />
+          </div>
         </div>
       {/if}
     </div>
@@ -367,8 +525,21 @@
 
   .view-controls {
     display: flex;
-    gap: 0.5rem;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
     margin-bottom: 1rem;
+    padding: 0 1rem;
+  }
+
+  .view-buttons {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .print-buttons {
+    display: flex;
+    gap: 0.5rem;
   }
 
   .view-button {
@@ -384,6 +555,28 @@
 
   .view-button.active {
     background: #e9ecef;
+  }
+
+  .print-view-button {
+    padding: 0.5rem 1rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background: white;
+    cursor: pointer;
+    font-size: 0.875rem;
+    color: #4b5563;
+    transition: all 0.2s;
+  }
+
+  .print-view-button:hover {
+    background: #f3f4f6;
+  }
+
+  .print-view-button.active {
+    background: #e5e7eb;
+    color: #1f2937;
+    border-color: #9ca3af;
+    font-weight: 500;
   }
 
   .print-controls {
@@ -436,6 +629,247 @@
 
   @media print {
     .show-page {
+      display: none;
+    }
+  }
+
+  .list-view {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 1rem;
+  }
+
+  .list-item {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+    cursor: move;
+    transition: all 0.2s ease;
+  }
+
+  .list-item:hover {
+    background: #f8fafc;
+  }
+
+  .list-item.expanded {
+    background: #f8fafc;
+  }
+
+  .list-item-header {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .list-item-main {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+  }
+
+  .list-item .position {
+    font-weight: bold;
+    min-width: 2rem;
+    color: #64748b;
+  }
+
+  .list-item .title {
+    font-weight: 600;
+    font-size: 1rem;
+    color: #1e293b;
+  }
+
+  .list-item .duration {
+    margin-left: auto;
+    color: #64748b;
+    font-size: 0.875rem;
+  }
+
+  .list-item-performers {
+    font-size: 0.875rem;
+    color: #64748b;
+    margin-left: 2.5rem;
+  }
+
+  .list-item-details {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid #e2e8f0;
+    font-size: 0.875rem;
+  }
+
+  .list-item-details .description {
+    margin-bottom: 0.5rem;
+    color: #475569;
+  }
+
+  .list-item-details .tech-details {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 0.5rem;
+  }
+
+  .list-item-details .detail {
+    color: #475569;
+  }
+
+  .list-item-details .detail strong {
+    color: #64748b;
+  }
+
+  .list-item-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-left: 1rem;
+  }
+
+  .action-button {
+    background: none;
+    border: none;
+    padding: 0.25rem;
+    cursor: pointer;
+    font-size: 1rem;
+    opacity: 0.6;
+    transition: opacity 0.2s;
+  }
+
+  .action-button:hover {
+    opacity: 1;
+  }
+
+  .lock-button.locked {
+    opacity: 1;
+  }
+
+  .delete-button:hover {
+    color: #ef4444;
+  }
+
+  .list-item .title {
+    cursor: pointer;
+  }
+
+  .list-item .title:hover {
+    color: #3b82f6;
+  }
+
+  .grid-view {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+    padding: 1rem;
+  }
+
+  .modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+
+  .modal-content {
+    background: white;
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    max-width: 90vw;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  .warning-icon {
+    color: #f59e0b;
+    margin-left: 0.5rem;
+  }
+
+  .character-count {
+    color: #f59e0b;
+    font-size: 0.875rem;
+    margin-left: 0.5rem;
+  }
+
+  .print-preview {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: white;
+    z-index: 1000;
+    overflow-y: auto;
+    padding: 2rem;
+  }
+
+  .print-preview-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .back-button {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: #f3f4f6;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.375rem;
+    color: #4b5563;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .back-button:hover {
+    background: #e5e7eb;
+    color: #1f2937;
+  }
+
+  .back-button svg {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+
+  .print-preview-header h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #1f2937;
+  }
+
+  .close-button {
+    font-size: 1.5rem;
+    color: #6b7280;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.5rem;
+    line-height: 1;
+    border-radius: 0.375rem;
+  }
+
+  .close-button:hover {
+    background: #f3f4f6;
+    color: #1f2937;
+  }
+
+  @media print {
+    .print-preview-header {
       display: none;
     }
   }

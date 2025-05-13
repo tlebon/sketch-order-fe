@@ -75,7 +75,7 @@ export function processSketchData(sketchesData: Record<string, string>[]): Sketc
     mergedData[title] = {
       id: crypto.randomUUID(),
       title,
-      description: row['description'] || `Characters: ${row['chars'] || '0'}`,
+      description: row['description'] || '',
       duration: Math.ceil(duration), // Round up to nearest minute
       chars: parseInt(row['chars'] || '0', 10),
       casted: characterPerformers.length,

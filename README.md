@@ -1,10 +1,11 @@
 # sv
 
 TODOS:
-1. print setlist
+<!-- 1. print setlist -->
 2. sort setlist using external order
 3. lock sketches in place
-4. ???
+4. make sure database works and deploy to stardog
+5. import sketch scripts
 
 Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
 

@@ -2,9 +2,11 @@
   import { createEventDispatcher } from 'svelte';
   import type { Sketch } from '$lib/types';
   import { slide } from 'svelte/transition';
+  import AlertTriangle from '@lucide/svelte/icons/alert-triangle';
 
   export let sketch: Sketch;
   export let isSelected = false;
+  export let showCharacterWarning = false;
 
   let isCastVisible = false;
 
@@ -55,7 +57,12 @@
 >
   <div class="p-4 flex-grow">
     <div class="flex justify-between items-center mb-2">
-      <h3 class="text-lg font-semibold text-gray-800 truncate" title={sketch.title}>{sketch.title}</h3>
+      <div class="flex items-center gap-2">
+        <h3 class="text-lg font-semibold text-gray-800 truncate" title={sketch.title}>{sketch.title}</h3>
+        {#if showCharacterWarning}
+          <AlertTriangle class="warning-icon" size={16} />
+        {/if}
+      </div>
       <div class="flex items-center space-x-1">
         <button
           class="p-1 text-gray-400 hover:text-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-blue-400"
@@ -80,14 +87,19 @@
       </div>
     </div>
     
-    {#if sketch.description}
-      <p class="description text-sm text-gray-600 mb-3 line-clamp-2" title={sketch.description}>{sketch.description}</p>
-    {/if}
+    <p class="description text-sm text-gray-600 mb-3 line-clamp-1" title={sketch.description || 'A sketch waiting for its story...'}>
+      {sketch.description || 'A sketch waiting for its story...'}
+    </p>
     
     <div class="stats text-xs text-gray-500 space-x-3 mb-3">
       <span>Duration: {sketch.duration} min</span>
       <span>Chars: {sketch.chars}</span>
       <span>Casted: {sketch.casted}</span>
+      {#if showCharacterWarning}
+        <span class="text-amber-500">
+          ({sketch.character_performers?.length || 0}/{sketch.chars} characters)
+        </span>
+      {/if}
     </div>
   </div>
 
@@ -121,5 +133,9 @@
   .card:focus-visible {
      outline: 2px solid blue;
      outline-offset: 2px;
+  }
+
+  .warning-icon {
+    color: #f59e0b;
   }
 </style> 
