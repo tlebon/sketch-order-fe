@@ -1,20 +1,36 @@
 <script lang="ts">
+  import type { CharacterPerformer } from '$lib/server/db/types';
   import { createEventDispatcher } from 'svelte';
-  import type { Sketch } from '$lib/types';
+
+  export let showId: string;
+  export let initialData: {
+    title: string;
+    description: string;
+    duration: number;
+    chars: number;
+    character_performers: CharacterPerformer[];
+  } | null = null;
 
   const dispatch = createEventDispatcher();
 
-  let title = '';
-  let description = '';
-  let duration = 5;
-  let chars = 1;
+  let title = initialData?.title || '';
+  let description = initialData?.description || '';
+  let duration = initialData?.duration || 0;
+  let chars = initialData?.chars || 0;
+  let characterPerformers = initialData?.character_performers || [];
   let characterName = '';
   let performerName = '';
-  let characterPerformers: { character_name: string; performer_name: string }[] = [];
 
   function addCharacterPerformer() {
     if (!characterName || !performerName) return;
-    characterPerformers = [...characterPerformers, { character_name: characterName, performer_name: performerName }];
+    characterPerformers = [...characterPerformers, {
+      id: crypto.randomUUID(),
+      sketch_id: '',
+      character_name: characterName,
+      performer_name: performerName,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }];
     characterName = '';
     performerName = '';
   }
@@ -23,209 +39,220 @@
     characterPerformers = characterPerformers.filter((_, i) => i !== index);
   }
 
-  function handleSubmit(e: Event) {
-    e.preventDefault();
-    const sketch: Omit<Sketch, 'id' | 'created_at' | 'updated_at'> = {
+  function handleSubmit() {
+    dispatch('submit', {
       title,
       description,
       duration,
       chars,
-      casted: characterPerformers.length,
-      locked: false,
-      position: 0,
-      character_performers: characterPerformers
-    };
-    dispatch('submit', { sketch });
-    title = '';
-    description = '';
-    duration = 5;
-    chars = 1;
-    characterName = '';
-    performerName = '';
-    characterPerformers = [];
+      character_performers: characterPerformers.map(cp => ({
+        character_name: cp.character_name,
+        performer_name: cp.performer_name
+      }))
+    });
   }
 </script>
 
-<form onsubmit={handleSubmit} class="sketch-form">
-  <div class="form-group">
-    <label for="title">Title</label>
-    <input
-      type="text"
-      id="title"
-      bind:value={title}
-      required
-      placeholder="Enter sketch title"
-    />
-  </div>
-
-  <div class="form-group">
-    <label for="description">Description</label>
-    <textarea
-      id="description"
-      bind:value={description}
-      placeholder="Enter sketch description"
-    ></textarea>
-  </div>
-
-  <div class="form-group">
-    <label for="duration">Duration (minutes)</label>
-    <input
-      type="number"
-      id="duration"
-      bind:value={duration}
-      min="1"
-      required
-    />
-  </div>
-
-  <div class="form-group">
-    <label for="chars">Number of Characters</label>
-    <input
-      type="number"
-      id="chars"
-      bind:value={chars}
-      min="1"
-      required
-    />
-  </div>
-
-  <div class="form-group">
-    <label>Character Assignments</label>
-    <div class="character-inputs">
+<form on:submit|preventDefault={handleSubmit} class="sketch-form">
+  <div class="space-y-4">
+    <div>
+      <label for="title" class="block text-sm font-medium text-gray-700">Title</label>
       <input
         type="text"
-        bind:value={characterName}
-        placeholder="Character name"
+        id="title"
+        bind:value={title}
+        required
+        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
       />
+    </div>
+
+    <div>
+      <label for="description" class="block text-sm font-medium text-gray-700">Description</label>
+      <textarea
+        id="description"
+        bind:value={description}
+        rows="3"
+        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+      ></textarea>
+    </div>
+
+    <div>
+      <label for="duration" class="block text-sm font-medium text-gray-700">Duration (minutes)</label>
       <input
-        type="text"
-        bind:value={performerName}
-        placeholder="Performer name"
-        onkeydown={(e) => e.key === 'Enter' && addCharacterPerformer()}
+        type="number"
+        id="duration"
+        bind:value={duration}
+        min="0"
+        required
+        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
       />
-      <button type="button" onclick={addCharacterPerformer}>Add</button>
+    </div>
+
+    <div>
+      <label for="chars" class="block text-sm font-medium text-gray-700">Number of Characters</label>
+      <input
+        type="number"
+        id="chars"
+        bind:value={chars}
+        min="0"
+        required
+        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+      />
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium text-gray-700">Character Assignments</label>
+      <div class="mt-1 grid grid-cols-2 gap-2">
+        <input
+          type="text"
+          bind:value={characterName}
+          placeholder="Character name"
+          class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+        />
+        <input
+          type="text"
+          bind:value={performerName}
+          placeholder="Performer name"
+          on:keydown={(e) => e.key === 'Enter' && addCharacterPerformer()}
+          class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+        />
+      </div>
+      <button
+        type="button"
+        on:click={addCharacterPerformer}
+        class="mt-2 px-3 py-1 text-sm text-blue-600 hover:text-blue-700"
+      >
+        Add Assignment
+      </button>
+    </div>
+
+    {#if characterPerformers.length > 0}
+      <div class="mt-4">
+        <h4 class="text-sm font-medium text-gray-700">Current Assignments</h4>
+        <ul class="mt-2 divide-y divide-gray-200">
+          {#each characterPerformers as cp, i}
+            <li class="py-2 flex justify-between items-center">
+              <div>
+                <span class="font-medium">{cp.character_name}</span>
+                <span class="text-gray-500 ml-2">→ {cp.performer_name}</span>
+              </div>
+              <button
+                type="button"
+                on:click={() => removeCharacterPerformer(i)}
+                class="text-red-600 hover:text-red-700"
+              >
+                Remove
+              </button>
+            </li>
+          {/each}
+        </ul>
+      </div>
+    {/if}
+
+    <div class="flex justify-end space-x-3">
+      <button
+        type="button"
+        on:click={() => dispatch('cancel')}
+        class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+      >
+        Cancel
+      </button>
+      <button
+        type="submit"
+        class="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+      >
+        {initialData ? 'Update' : 'Create'} Sketch
+      </button>
     </div>
   </div>
-
-  {#if characterPerformers.length > 0}
-    <div class="character-list">
-      <h4>Current Assignments</h4>
-      <ul>
-        {#each characterPerformers as cp, i}
-          <li>
-            <span class="character">{cp.character_name}</span>
-            <span class="performer">{cp.performer_name}</span>
-            <button
-              type="button"
-              onclick={() => removeCharacterPerformer(i)}
-              class="remove-button"
-            >
-              ×
-            </button>
-          </li>
-        {/each}
-      </ul>
-    </div>
-  {/if}
-
-  <button type="submit" class="submit-button">Create Sketch</button>
 </form>
 
 <style>
   .sketch-form {
-    background: white;
-    padding: 1.5rem;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
   }
 
   .form-group {
-    margin-bottom: 1rem;
-  }
-
-  label {
-    display: block;
-    margin-bottom: 0.5rem;
-    font-weight: 500;
-    color: #333;
-  }
-
-  input,
-  textarea {
-    width: 100%;
-    padding: 0.5rem;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    font-size: 1rem;
-  }
-
-  textarea {
-    min-height: 100px;
-    resize: vertical;
-  }
-
-  .character-inputs {
-    display: grid;
-    grid-template-columns: 1fr 1fr auto;
+    display: flex;
+    flex-direction: column;
     gap: 0.5rem;
-    align-items: center;
+  }
+
+  input, textarea {
+    padding: 0.5rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.375rem;
+    width: 100%;
+  }
+
+  input:focus, textarea:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+  }
+
+  .button-group {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    margin-top: 1rem;
+  }
+
+  .button {
+    padding: 0.5rem 1rem;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  .button-primary {
+    background-color: #3b82f6;
+    color: white;
+    border: none;
+  }
+
+  .button-primary:hover {
+    background-color: #2563eb;
+  }
+
+  .button-secondary {
+    background-color: white;
+    color: #374151;
+    border: 1px solid #d1d5db;
+  }
+
+  .button-secondary:hover {
+    background-color: #f9fafb;
   }
 
   .character-list {
-    margin: 1rem 0;
+    margin-top: 1rem;
   }
 
-  .character-list h4 {
-    margin: 0 0 0.5rem 0;
-    font-size: 1rem;
-  }
-
-  .character-list ul {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-  }
-
-  .character-list li {
+  .character-item {
     display: flex;
     justify-content: space-between;
     align-items: center;
     padding: 0.5rem;
-    background: #f5f5f5;
-    border-radius: 4px;
-    margin-bottom: 0.5rem;
+    border-bottom: 1px solid #e5e7eb;
   }
 
-  .character {
-    font-weight: bold;
-  }
-
-  .performer {
-    color: #666;
+  .character-item:last-child {
+    border-bottom: none;
   }
 
   .remove-button {
+    color: #ef4444;
     background: none;
     border: none;
-    color: #f44336;
-    font-size: 1.2rem;
     cursor: pointer;
-    padding: 0 0.5rem;
+    padding: 0.25rem;
   }
 
-  .submit-button {
-    width: 100%;
-    padding: 0.75rem;
-    background: #4CAF50;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    font-size: 1rem;
-    cursor: pointer;
-    transition: background-color 0.2s;
+  .remove-button:hover {
+    color: #dc2626;
   }
-
-  .submit-button:hover {
-    background: #45a049;
-  }
-</style> 
+</style>
