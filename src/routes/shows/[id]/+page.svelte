@@ -11,13 +11,12 @@
   import ViewList from '@lucide/svelte/icons/list';
   import AlertTriangle from '@lucide/svelte/icons/alert-triangle';
   import Printer from '@lucide/svelte/icons/printer';
-  import Filter from '@lucide/svelte/icons/filter';
-  import Upload from '@lucide/svelte/icons/upload';
   import { flip } from 'svelte/animate';
   import type { PageData } from './$types';
   import PrintSetList from '$lib/components/PrintSetList.svelte';
   import { fade } from 'svelte/transition';
   import ShowSidebar from '$lib/components/show/ShowSidebar.svelte';
+  import ViewControls from '$lib/components/show/ViewControls.svelte';
 
   export let data: PageData;
   const dispatch = createEventDispatcher();
@@ -60,6 +59,7 @@
     await loadSketches();
   });
 
+  // TODO: Add an option to manually create a sketch
   async function handleCreate(e: CustomEvent<{ sketch: Omit<Sketch, 'id' | 'created_at' | 'updated_at'> }>) {
     try {
       const response = await fetch(`/api/sketches`, {
@@ -437,59 +437,18 @@
         handlePrint();
       }}
       on:importComplete={loadSketches}
+      on:csvImport={handleImport}
     />
 
     <div class="content">
-      <div class="view-controls">
-        <div class="view-buttons">
-          <button
-            class="view-button"
-            class:active={viewMode === 'grid'}
-            on:click={() => viewMode = 'grid'}
-          >
-            <ViewGrid size={20} />
-          </button>
-          <button
-            class="view-button"
-            class:active={viewMode === 'list'}
-            on:click={() => viewMode = 'list'}
-          >
-            <ViewList size={20} />
-          </button>
-        </div>
-        <div class="print-buttons">
-          <button
-            class="print-view-button"
-            class:active={showPrintView && printVersion === 'greenroom'}
-            on:click={() => {
-              printVersion = 'greenroom';
-              showPrintView = true;
-            }}
-          >
-            Green Room
-          </button>
-          <button
-            class="print-view-button"
-            class:active={showPrintView && printVersion === 'hallway'}
-            on:click={() => {
-              printVersion = 'hallway';
-              showPrintView = true;
-            }}
-          >
-            Hallway
-          </button>
-          <button
-            class="print-view-button"
-            class:active={showPrintView && printVersion === 'techbooth'}
-            on:click={() => {
-              printVersion = 'techbooth';
-              showPrintView = true;
-            }}
-          >
-            Tech Booth
-          </button>
-        </div>
-      </div>
+      <ViewControls
+        bind:viewMode
+        bind:printVersion
+        bind:showPrintView
+        on:viewModeChange={(e: CustomEvent<{ viewMode: 'grid' | 'list' }>) => viewMode = e.detail.viewMode}
+        on:printVersionChange={(e: CustomEvent<{ printVersion: 'greenroom' | 'hallway' | 'techbooth' }>) => printVersion = e.detail.printVersion}
+        on:showPrintViewChange={(e: CustomEvent<{ showPrintView: boolean }>) => showPrintView = e.detail.showPrintView}
+      />
 
       {#if viewMode === 'list'}
         <div class="list-view">
@@ -672,62 +631,6 @@
     padding: 1rem;
   }
 
-  .view-controls {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 1rem;
-    margin-bottom: 1rem;
-    padding: 0 1rem;
-  }
-
-  .view-buttons {
-    display: flex;
-    gap: 0.5rem;
-  }
-
-  .print-buttons {
-    display: flex;
-    gap: 0.5rem;
-  }
-
-  .view-button {
-    padding: 0.5rem;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    background: white;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .view-button.active {
-    background: #e9ecef;
-  }
-
-  .print-view-button {
-    padding: 0.5rem 1rem;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    background: white;
-    cursor: pointer;
-    font-size: 0.875rem;
-    color: #4b5563;
-    transition: all 0.2s;
-  }
-
-  .print-view-button:hover {
-    background: #f3f4f6;
-  }
-
-  .print-view-button.active {
-    background: #e5e7eb;
-    color: #1f2937;
-    border-color: #9ca3af;
-    font-weight: 500;
-  }
-
   .modal-backdrop {
     position: fixed;
     top: 0;
@@ -906,10 +809,6 @@
     color: #3b82f6;
   }
 
-  .warning-icon {
-    color: #f59e0b;
-  }
-
   .modal-backdrop {
     position: fixed;
     top: 0;
@@ -977,72 +876,6 @@
 
   .performer-filter-wrapper :global(.performer-filter label) {
     display: none;
-  }
-
-  .collapsed-buttons {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    padding: 0.5rem;
-    margin-top: 2rem;
-  }
-
-  .sidebar-button {
-    width: 32px;
-    height: 32px;
-    background: #e9ecef;
-    border: none;
-    border-radius: 4px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    color: #495057;
-    padding: 0;
-  }
-
-  .sidebar-button:hover {
-    background: #dee2e6;
-    color: #212529;
-  }
-
-  .filter-container {
-    position: relative;
-  }
-
-  .filter-dropdown {
-    position: absolute;
-    left: 100%;
-    top: 0;
-    margin-left: 0.5rem;
-    background: white;
-    border: 1px solid #e9ecef;
-    border-radius: 4px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    min-width: 150px;
-    z-index: 100;
-  }
-
-  .filter-option {
-    display: block;
-    width: 100%;
-    padding: 0.5rem 1rem;
-    text-align: left;
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: #495057;
-    font-size: 0.875rem;
-  }
-
-  .filter-option:hover {
-    background: #f8f9fa;
-  }
-
-  .filter-option.active {
-    background: #e9ecef;
-    color: #212529;
   }
 
   .sketch-list-item {

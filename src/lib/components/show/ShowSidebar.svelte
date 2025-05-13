@@ -19,6 +19,7 @@
     filter: { performer: string | null };
     print: { printVersion: 'greenroom' | 'hallway' | 'techbooth' };
     importComplete: void;
+    csvImport: { importType: 'sketches' | 'techDetails' | 'unknown', data: any[] };
   }>();
 
   let showFilterDropdown = false;
@@ -39,6 +40,10 @@
 
   function handlePrint() {
     dispatch('print', { printVersion });
+  }
+
+  function handleCSVImport(e: CustomEvent<{ importType: 'sketches' | 'techDetails' | 'unknown', data: any[] }>) {
+    dispatch('csvImport', e.detail);
   }
 </script>
 
@@ -80,7 +85,7 @@
   <div class="sidebar-content">
     <PerformerFilter {performers} bind:selectedPerformer />
     <div class="mt-4">
-      <CSVImport showId={show.id} on:importComplete={() => dispatch('importComplete')} />
+      <CSVImport showId={show.id} on:import={handleCSVImport} on:importComplete={() => dispatch('importComplete')} />
     </div>
   </div>
   {#if isSidebarCollapsed}
@@ -161,8 +166,8 @@
     position: absolute;
     right: 0.5rem;
     top: 0.5rem;
-    width: 28px;
-    height: 28px;
+    width: 32px;
+    height: 32px;
     background: #e9ecef;
     border: none;
     border-radius: 4px;
