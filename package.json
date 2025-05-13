@@ -30,8 +30,6 @@
 		"@tailwindcss/forms": "^0.5.9",
 		"@tailwindcss/typography": "^0.5.15",
 		"@tailwindcss/vite": "^4.0.0",
-		"@testing-library/jest-dom": "^6.6.3",
-		"@testing-library/svelte": "^5.2.4",
 		"@types/better-sqlite3": "^7.6.12",
 		"@types/node": "^22",
 		"@types/papaparse": "^5.3.16",
@@ -40,7 +38,6 @@
 		"eslint-config-prettier": "^10.0.1",
 		"eslint-plugin-svelte": "^3.0.0",
 		"globals": "^16.0.0",
-		"jsdom": "^26.0.0",
 		"prettier": "^3.4.2",
 		"prettier-plugin-svelte": "^3.3.3",
 		"prettier-plugin-tailwindcss": "^0.6.11",
@@ -61,7 +58,6 @@
 		"better-sqlite3": "^11.8.0",
 		"drizzle-orm": "^0.40.0",
 		"papaparse": "^5.5.2",
-		"svelte-dnd-action": "^0.9.61",
 		"uuid": "^11.1.0"
 	},
 	"pnpm": {

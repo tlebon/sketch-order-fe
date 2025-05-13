@@ -10,7 +10,6 @@
   import ViewGrid from '@lucide/svelte/icons/layout-grid';
   import ViewList from '@lucide/svelte/icons/list';
   import AlertTriangle from '@lucide/svelte/icons/alert-triangle';
-  import { dndzone, type DndEventInfo } from 'svelte-dnd-action';
   import { flip } from 'svelte/animate';
   import type { PageData } from './$types';
   import PrintSetList from '$lib/components/PrintSetList.svelte';
@@ -28,6 +27,8 @@
   let showPrintView = false;
   let printVersion: 'greenroom' | 'hallway' | 'techbooth' = 'greenroom';
   let expandedSketchId: string | null = null;
+  let draggedSketch: Sketch | null = null;
+  let draggedOverIndex: number | null = null;
 
   function formatDuration(minutes: number): string {
     const hours = Math.floor(minutes / 60);
@@ -212,26 +213,73 @@
     }
   }
 
-  function handleDndConsider(e: CustomEvent<{ items: Sketch[], info: DndEventInfo }>) {
-    filteredSketches = e.detail.items;
+  function handleDragStart(e: DragEvent, sketch: Sketch) {
+    if (sketch.locked) {
+      e.preventDefault();
+      return;
+    }
+    draggedSketch = sketch;
+    if (e.dataTransfer) {
+      e.dataTransfer.effectAllowed = 'move';
+    }
   }
 
-  async function handleDndFinalize(e: CustomEvent<{ items: Sketch[], info: DndEventInfo }>) {
-    const finalFilteredOrder = filteredSketches;
+  function handleDragOver(e: DragEvent, index: number) {
+    e.preventDefault();
+    if (!draggedSketch || draggedSketch.locked) return;
+    
+    const targetSketch = filteredSketches[index];
+    if (targetSketch.locked) return;
 
-    const finalFilteredPositionMap = new Map(finalFilteredOrder.map((item, index) => [item.id, index]));
+    draggedOverIndex = index;
+    if (e.dataTransfer) {
+      e.dataTransfer.dropEffect = 'move';
+    }
+  }
 
-    const nextSketches = sketches
-      .map(sketch => {
-        const newPosition = finalFilteredPositionMap.get(sketch.id);
-        return { ...sketch, position: newPosition !== undefined ? newPosition : sketch.position };
-      })
-      .sort((a, b) => a.position - b.position)
-      .map((sketch, index) => ({ ...sketch, position: index }));
+  function handleDragLeave() {
+    draggedOverIndex = null;
+  }
 
-    sketches = nextSketches;
+  async function handleDrop(e: DragEvent, index: number) {
+    e.preventDefault();
+    if (!draggedSketch || draggedSketch.locked) return;
+    
+    const targetSketch = filteredSketches[index];
+    if (targetSketch.locked) return;
 
-    await updateSketchOrderInBackend(nextSketches);
+    const newSketches = [...filteredSketches];
+    const draggedIndex = newSketches.findIndex(s => s.id === draggedSketch?.id);
+    
+    if (draggedIndex !== -1) {
+      newSketches.splice(draggedIndex, 1);
+      newSketches.splice(index, 0, draggedSketch);
+      
+      const finalFilteredOrder = newSketches;
+      const finalFilteredPositionMap = new Map(finalFilteredOrder.map((item, index) => [item.id, index]));
+
+      const nextSketches = sketches
+        .map(sketch => {
+          if (sketch.locked) {
+            return sketch;
+          }
+          const newPosition = finalFilteredPositionMap.get(sketch.id);
+          return { ...sketch, position: newPosition !== undefined ? newPosition : sketch.position };
+        })
+        .sort((a, b) => a.position - b.position)
+        .map((sketch, index) => ({ ...sketch, position: index }));
+
+      sketches = nextSketches;
+      await updateSketchOrderInBackend(nextSketches);
+    }
+
+    draggedSketch = null;
+    draggedOverIndex = null;
+  }
+
+  function handleDragEnd() {
+    draggedSketch = null;
+    draggedOverIndex = null;
   }
 
   async function updateSketchOrderInBackend(orderedSketches: Sketch[]) {
@@ -381,9 +429,22 @@
       </div>
 
       {#if viewMode === 'list'}
-        <div class="list-view" use:dndzone={{items: filteredSketches, flipDurationMs}} on:consider={handleDndConsider} on:finalize={handleDndFinalize}>
-          {#each filteredSketches as sketch (sketch.id)}
-            <div class="list-item" class:expanded={expandedSketchId === sketch.id} animate:flip={{duration: flipDurationMs}}>
+        <div class="list-view">
+          {#each filteredSketches as sketch, index (sketch.id)}
+            <div 
+              class="list-item" 
+              class:expanded={expandedSketchId === sketch.id}
+              class:locked={sketch.locked}
+              class:dragging={draggedSketch?.id === sketch.id}
+              class:drag-over={draggedOverIndex === index}
+              animate:flip={{duration: flipDurationMs}}
+              draggable={!sketch.locked}
+              on:dragstart={(e) => handleDragStart(e, sketch)}
+              on:dragover={(e) => handleDragOver(e, index)}
+              on:dragleave={handleDragLeave}
+              on:drop={(e) => handleDrop(e, index)}
+              on:dragend={handleDragEnd}
+            >
               <div class="list-item-header">
                 <div class="list-item-main">
                   <span class="position">{sketch.position + 1}.</span>
@@ -458,9 +519,21 @@
           {/each}
         </div>
       {:else}
-        <div class="grid-view" use:dndzone={{items: filteredSketches, flipDurationMs}} on:consider={handleDndConsider} on:finalize={handleDndFinalize}>
-          {#each filteredSketches as sketch (sketch.id)}
-            <div class="sketch-list-item" animate:flip={{duration: flipDurationMs}}>
+        <div class="grid-view">
+          {#each filteredSketches as sketch, index (sketch.id)}
+            <div 
+              class="sketch-list-item" 
+              class:locked={sketch.locked}
+              class:dragging={draggedSketch?.id === sketch.id}
+              class:drag-over={draggedOverIndex === index}
+              animate:flip={{duration: flipDurationMs}}
+              draggable={!sketch.locked}
+              on:dragstart={(e) => handleDragStart(e, sketch)}
+              on:dragover={(e) => handleDragOver(e, index)}
+              on:dragleave={handleDragLeave}
+              on:drop={(e) => handleDrop(e, index)}
+              on:dragend={handleDragEnd}
+            >
               <SketchCard 
                 {sketch} 
                 on:update={loadSketches} 
@@ -872,5 +945,39 @@
     .print-preview-header {
       display: none;
     }
+  }
+
+  .list-item.locked {
+    opacity: 0.8;
+    cursor: not-allowed;
+  }
+
+  .list-item.locked:hover {
+    background: #f8fafc;
+  }
+
+  .sketch-list-item.locked {
+    opacity: 0.8;
+    cursor: not-allowed;
+  }
+
+  .sketch-list-item.locked:hover {
+    background: #f9fafb;
+  }
+
+  .list-item.dragging {
+    opacity: 0.5;
+  }
+
+  .list-item.drag-over {
+    border-top: 2px solid #3b82f6;
+  }
+
+  .sketch-list-item.dragging {
+    opacity: 0.5;
+  }
+
+  .sketch-list-item.drag-over {
+    border-top: 2px solid #3b82f6;
   }
 </style> 

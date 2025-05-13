@@ -2,6 +2,7 @@
   import { createEventDispatcher } from 'svelte';
   import { readCSVFile, processSketchData } from '$lib/utils/csv';
 
+  export let showId: string;
   const dispatch = createEventDispatcher();
   let fileInput: HTMLInputElement;
   let isDragging = false;
