@@ -10,6 +10,9 @@
   import ViewGrid from '@lucide/svelte/icons/layout-grid';
   import ViewList from '@lucide/svelte/icons/list';
   import AlertTriangle from '@lucide/svelte/icons/alert-triangle';
+  import Printer from '@lucide/svelte/icons/printer';
+  import Filter from '@lucide/svelte/icons/filter';
+  import Upload from '@lucide/svelte/icons/upload';
   import { flip } from 'svelte/animate';
   import type { PageData } from './$types';
   import PrintSetList from '$lib/components/PrintSetList.svelte';
@@ -30,6 +33,8 @@
   let draggedSketch: Sketch | null = null;
   let draggedOverIndex: number | null = null;
   let printViewPerformer: string | null = null;
+  let isSidebarCollapsed = false;
+  let showFilterDropdown = false;
 
   function formatDuration(minutes: number): string {
     const hours = Math.floor(minutes / 60);
@@ -61,9 +66,9 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...e.detail.sketch, show_id: showId })
       });
-      
+
       if (!response.ok) throw new Error('Failed to create sketch');
-      
+
       const newSketch = await response.json();
       newSketch.position = sketches.length;
       sketches = [...sketches, newSketch];
@@ -107,19 +112,19 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestBody)
       });
-      
+
       if (!response.ok) {
         const errorResult = await response.json().catch(() => ({ error: 'Failed to import data. Unknown error.' }));
         throw new Error(errorResult.error || 'Failed to import data');
       }
-      
+
       const importResults = await response.json();
 
       if (importType === 'sketches') {
         const newSketches = importResults
           .filter((r: { success: boolean; sketch?: Sketch }) => r.success && r.sketch)
           .map((r: { sketch: Sketch }) => r.sketch);
-        
+
         if (newSketches.length > 0) {
           sketches = [...sketches, ...newSketches].sort((a,b) => a.position - b.position);
           alert(`${newSketches.length} sketch(es) imported successfully.`);
@@ -141,7 +146,7 @@
             console.error('Tech detail import issues:', importResults.filter((r: { success: boolean }) => !r.success));
         }
         // Reload sketches to see updated tech details
-        await loadSketches(); 
+        await loadSketches();
       }
 
     } catch (error) {
@@ -157,10 +162,10 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ locked: e.detail.locked })
       });
-      
+
       if (!response.ok) throw new Error('Failed to update sketch');
-      
-      sketches = sketches.map(sketch => 
+
+      sketches = sketches.map(sketch =>
         sketch.id === e.detail.id ? { ...sketch, locked: e.detail.locked } : sketch
       );
     } catch (error) {
@@ -180,9 +185,9 @@
       const response = await fetch(`/api/sketches/${sketchId}`, {
         method: 'DELETE'
       });
-      
+
       if (!response.ok) throw new Error('Failed to delete sketch');
-      
+
       const deletedSketchIndex = sketches.findIndex(s => s.id === sketchId);
       sketches = sketches.filter(sketch => sketch.id !== sketchId);
       sketches = sketches.map((s, index) => ({ ...s, position: index }));
@@ -206,9 +211,9 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(e.detail.sketch)
       });
-      
+
       if (!response.ok) throw new Error('Failed to update sketch');
-      
+
       sketches = sketches.map(s => s.id === e.detail.sketch.id ? e.detail.sketch : s).sort((a,b) => a.position - b.position);
       if (selectedSketch?.id === e.detail.sketch.id) {
         selectedSketch = e.detail.sketch;
@@ -232,7 +237,7 @@
   function handleDragOver(e: DragEvent, index: number) {
     e.preventDefault();
     if (!draggedSketch || draggedSketch.locked) return;
-    
+
     const targetSketch = filteredSketches[index];
     if (targetSketch.locked) return;
 
@@ -249,17 +254,17 @@
   async function handleDrop(e: DragEvent, index: number) {
     e.preventDefault();
     if (!draggedSketch || draggedSketch.locked) return;
-    
+
     const targetSketch = filteredSketches[index];
     if (targetSketch.locked) return;
 
     const newSketches = [...filteredSketches];
     const draggedIndex = newSketches.findIndex(s => s.id === draggedSketch?.id);
-    
+
     if (draggedIndex !== -1) {
       newSketches.splice(draggedIndex, 1);
       newSketches.splice(index, 0, draggedSketch);
-      
+
       const finalFilteredOrder = newSketches;
       const finalFilteredPositionMap = new Map(finalFilteredOrder.map((item, index) => [item.id, index]));
 
@@ -290,7 +295,7 @@
   async function updateSketchOrderInBackend(orderedSketches: Sketch[]) {
       const sketchUpdates = orderedSketches.map(s => ({ id: s.id, position: s.position }));
       try {
-          const response = await fetch('/api/sketches', { 
+          const response = await fetch('/api/sketches', {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ updates: sketchUpdates })
@@ -313,8 +318,8 @@
       if (!response.ok) throw new Error('Failed to load sketches');
       const fetchedSketches = await response.json();
       sketches = fetchedSketches
-          .map((s: any) => ({ 
-            ...s, 
+          .map((s: any) => ({
+            ...s,
             position: s.position ?? 0,
             locked: Boolean(s.locked) // Convert number to boolean
           }))
@@ -340,6 +345,19 @@
   function hasCharacterMismatch(sketch: Sketch): boolean {
     const performerCount = sketch.character_performers?.length || 0;
     return performerCount !== sketch.chars;
+  }
+
+  function toggleSidebar() {
+    isSidebarCollapsed = !isSidebarCollapsed;
+  }
+
+  function toggleFilterDropdown() {
+    showFilterDropdown = !showFilterDropdown;
+  }
+
+  function handleFilterSelect(performer: string | null) {
+    selectedPerformer = performer;
+    showFilterDropdown = false;
   }
 </script>
 
@@ -408,7 +426,28 @@
   </div>
 {:else}
   <div class="show-page">
-    <div class="sidebar">
+    <div class="sidebar" class:collapsed={isSidebarCollapsed}>
+      <button
+        class="sidebar-button collapse-button"
+        on:click={toggleSidebar}
+        aria-label={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+      >
+        <svg
+          class="arrow-icon"
+          class:collapsed={isSidebarCollapsed}
+          xmlns="http://www.w3.org/2000/svg"
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M15 18l-6-6 6-6"/>
+        </svg>
+      </button>
       <div class="sidebar-header">
         <h1>{show.title}</h1>
         <div class="print-controls">
@@ -426,30 +465,80 @@
         <PerformerFilter {performers} bind:selectedPerformer />
         <CSVImport showId={show.id} on:importComplete={loadSketches} />
       </div>
+      {#if isSidebarCollapsed}
+        <div class="collapsed-buttons">
+          <button
+            class="sidebar-button"
+            on:click={handlePrint}
+            title="Print Set List"
+          >
+            <Printer size={20} />
+          </button>
+          <div class="filter-container">
+            <button
+              class="sidebar-button"
+              on:click={toggleFilterDropdown}
+              title="Filter by Performer"
+            >
+              <Filter size={20} />
+            </button>
+            {#if showFilterDropdown}
+              <div class="filter-dropdown" transition:fade>
+                <button
+                  class="filter-option"
+                  class:active={selectedPerformer === null}
+                  on:click={() => handleFilterSelect(null)}
+                >
+                  All Performers
+                </button>
+                {#each performers as performer}
+                  <button
+                    class="filter-option"
+                    class:active={selectedPerformer === performer}
+                    on:click={() => handleFilterSelect(performer)}
+                  >
+                    {performer}
+                  </button>
+                {/each}
+              </div>
+            {/if}
+          </div>
+          <button
+            class="sidebar-button"
+            on:click={() => {
+              const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+              fileInput?.click();
+            }}
+            title="Import CSV"
+          >
+            <Upload size={20} />
+          </button>
+        </div>
+      {/if}
     </div>
 
     <div class="content">
       <div class="view-controls">
         <div class="view-buttons">
-          <button 
-            class="view-button" 
-            class:active={viewMode === 'grid'} 
+          <button
+            class="view-button"
+            class:active={viewMode === 'grid'}
             on:click={() => viewMode = 'grid'}
           >
             <ViewGrid size={20} />
           </button>
-          <button 
-            class="view-button" 
-            class:active={viewMode === 'list'} 
+          <button
+            class="view-button"
+            class:active={viewMode === 'list'}
             on:click={() => viewMode = 'list'}
           >
             <ViewList size={20} />
           </button>
         </div>
         <div class="print-buttons">
-          <button 
-            class="print-view-button" 
-            class:active={showPrintView && printVersion === 'greenroom'} 
+          <button
+            class="print-view-button"
+            class:active={showPrintView && printVersion === 'greenroom'}
             on:click={() => {
               printVersion = 'greenroom';
               showPrintView = true;
@@ -457,9 +546,9 @@
           >
             Green Room
           </button>
-          <button 
-            class="print-view-button" 
-            class:active={showPrintView && printVersion === 'hallway'} 
+          <button
+            class="print-view-button"
+            class:active={showPrintView && printVersion === 'hallway'}
             on:click={() => {
               printVersion = 'hallway';
               showPrintView = true;
@@ -467,9 +556,9 @@
           >
             Hallway
           </button>
-          <button 
-            class="print-view-button" 
-            class:active={showPrintView && printVersion === 'techbooth'} 
+          <button
+            class="print-view-button"
+            class:active={showPrintView && printVersion === 'techbooth'}
             on:click={() => {
               printVersion = 'techbooth';
               showPrintView = true;
@@ -483,8 +572,8 @@
       {#if viewMode === 'list'}
         <div class="list-view">
           {#each filteredSketches as sketch, index (sketch.id)}
-            <div 
-              class="list-item" 
+            <div
+              class="list-item"
               class:expanded={expandedSketchId === sketch.id}
               class:locked={sketch.locked}
               class:dragging={draggedSketch?.id === sketch.id}
@@ -506,14 +595,14 @@
                   {/if}
                   <span class="duration">{formatDuration(sketch.duration)}</span>
                   <div class="list-item-actions">
-                    <button 
-                      class="action-button lock-button" 
+                    <button
+                      class="action-button lock-button"
                       class:locked={sketch.locked}
                       on:click|stopPropagation={() => handleLockClick(sketch.id, !sketch.locked)}
                     >
                       {sketch.locked ? '🔒' : '🔓'}
                     </button>
-                    <button 
+                    <button
                       class="action-button delete-button"
                       on:click|stopPropagation={() => handleDeleteClick(sketch.id)}
                     >
@@ -532,7 +621,7 @@
                   {/if}
                 </div>
               </div>
-              
+
               {#if expandedSketchId === sketch.id}
                 <div class="list-item-details">
                   {#if sketch.description}
@@ -540,7 +629,7 @@
                       <strong>Description:</strong> {sketch.description}
                     </div>
                   {/if}
-                  
+
                   {#if sketch.techDetails}
                     <div class="tech-details">
                       {#if sketch.techDetails.costume}
@@ -573,8 +662,8 @@
       {:else}
         <div class="grid-view">
           {#each filteredSketches as sketch, index (sketch.id)}
-            <div 
-              class="sketch-list-item" 
+            <div
+              class="sketch-list-item"
               class:locked={sketch.locked}
               class:dragging={draggedSketch?.id === sketch.id}
               class:drag-over={draggedOverIndex === index}
@@ -586,9 +675,9 @@
               on:drop={(e) => handleDrop(e, index)}
               on:dragend={handleDragEnd}
             >
-              <SketchCard 
-                {sketch} 
-                on:update={loadSketches} 
+              <SketchCard
+                {sketch}
+                on:update={loadSketches}
                 on:select={() => selectedSketch = sketch}
                 showCharacterWarning={hasCharacterMismatch(sketch)}
               />
@@ -600,8 +689,8 @@
       {#if selectedSketch}
         <div class="modal-backdrop" on:click={() => selectedSketch = null}>
           <div class="modal-content" on:click|stopPropagation>
-            <SketchDetails 
-              sketch={selectedSketch} 
+            <SketchDetails
+              sketch={selectedSketch}
               on:close={() => selectedSketch = null}
               on:update={handleUpdate}
             />
@@ -626,6 +715,49 @@
     display: flex;
     flex-direction: column;
     padding: 1rem;
+    position: relative;
+    transition: width 0.3s ease;
+  }
+
+  .sidebar.collapsed {
+    width: 50px;
+    padding: 1rem 0.5rem;
+  }
+
+  .sidebar.collapsed .sidebar-header,
+  .sidebar.collapsed .sidebar-content {
+    display: none;
+  }
+
+  .collapse-button {
+    position: absolute;
+    right: 0.5rem;
+    top: 0.5rem;
+    width: 28px;
+    height: 28px;
+    background: #e9ecef;
+    border: none;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 10;
+    padding: 0;
+    transition: background-color 0.2s ease;
+  }
+
+  .collapse-button:hover {
+    background: #dee2e6;
+  }
+
+  .arrow-icon {
+    transition: transform 0.3s ease;
+    color: #495057;
+  }
+
+  .arrow-icon.collapsed {
+    transform: rotate(180deg);
   }
 
   .sidebar-header {
@@ -1065,4 +1197,97 @@
   .performer-filter-wrapper :global(.performer-filter label) {
     display: none;
   }
-</style> 
+
+  .collapsed-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    margin-top: 2rem;
+  }
+
+  .collapsed-button {
+    width: 32px;
+    height: 32px;
+    background: #e9ecef;
+    border: none;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: #495057;
+  }
+
+  .collapsed-button:hover {
+    background: #dee2e6;
+    color: #212529;
+  }
+
+  .sidebar.collapsed {
+    width: 50px;
+    padding: 1rem 0.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .sidebar-button {
+    width: 32px;
+    height: 32px;
+    background: #e9ecef;
+    border: none;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: #495057;
+    padding: 0;
+  }
+
+  .sidebar-button:hover {
+    background: #dee2e6;
+    color: #212529;
+  }
+
+  .filter-container {
+    position: relative;
+  }
+
+  .filter-dropdown {
+    position: absolute;
+    left: 100%;
+    top: 0;
+    margin-left: 0.5rem;
+    background: white;
+    border: 1px solid #e9ecef;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    min-width: 150px;
+    z-index: 100;
+  }
+
+  .filter-option {
+    display: block;
+    width: 100%;
+    padding: 0.5rem 1rem;
+    text-align: left;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #495057;
+    font-size: 0.875rem;
+  }
+
+  .filter-option:hover {
+    background: #f8f9fa;
+  }
+
+  .filter-option.active {
+    background: #e9ecef;
+    color: #212529;
+  }
+</style>
