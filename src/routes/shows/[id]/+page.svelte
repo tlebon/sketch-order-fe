@@ -701,6 +701,8 @@
                 {sketch}
                 on:update={loadSketches}
                 on:select={() => selectedSketch = sketch}
+                on:lock={e => handleLock(e)}
+                on:delete={e => handleDelete(e)}
                 showCharacterWarning={hasCharacterMismatch(sketch)}
               />
             </div>
@@ -904,50 +906,31 @@
     background: #45a049;
   }
 
-  .sketches-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 1rem;
-    padding: 1rem;
-  }
-
-  .sketches-list {
+  .modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
     display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    padding: 1rem;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
   }
 
-  .sketch-list-item {
-    transition: background-color 0.2s ease-in-out;
+  .modal-content {
     background: white;
-    border: 1px solid #e2e8f0;
+    padding: 1.5rem;
     border-radius: 0.5rem;
-  }
-
-  .sketch-list-item:hover {
-    background: #f8fafc;
-  }
-
-  .sketch-list-item.locked {
-    opacity: 0.8;
-    cursor: not-allowed;
-  }
-
-  .sketch-list-item.locked:hover {
-    background: #f8fafc;
-  }
-
-  .sketch-list-item.dragging {
-    opacity: 0.5;
-  }
-
-  .sketch-list-item.drag-over {
-    border-top: 2px solid #3b82f6;
+    max-width: 32rem;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
   }
 
   @media print {
-    .show-page {
+    .modal-backdrop {
       display: none;
     }
   }
@@ -966,10 +949,35 @@
     padding: 0.75rem;
     cursor: move;
     transition: all 0.2s ease;
+    position: relative;
+  }
+
+  .list-item.locked {
+    background: #f8fafc;
+    cursor: not-allowed;
   }
 
   .list-item:hover {
     background: #f8fafc;
+  }
+
+  .list-item.locked:hover {
+    background: #f8fafc;
+  }
+
+  .list-item.drag-over::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: -2px;
+    height: 2px;
+    background-color: #3b82f6;
+    z-index: 1;
+  }
+
+  .list-item.dragging {
+    opacity: 0.5;
   }
 
   .list-item.expanded {
@@ -1076,11 +1084,8 @@
     color: #3b82f6;
   }
 
-  .grid-view {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 1rem;
-    padding: 1rem;
+  .warning-icon {
+    color: #f59e0b;
   }
 
   .modal-backdrop {
@@ -1089,144 +1094,34 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
+    background-color: rgba(0, 0, 0, 0.5);
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 1000;
+    z-index: 50;
   }
 
   .modal-content {
-    background: white;
+    background-color: white;
     border-radius: 0.5rem;
-    padding: 1.5rem;
-    max-width: 90vw;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    max-width: 32rem;
+    width: 100%;
     max-height: 90vh;
     overflow-y: auto;
   }
 
-  .warning-icon {
-    color: #f59e0b;
-    margin-left: 0.5rem;
+  .grid-view {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1rem;
+    padding: 1rem;
   }
 
   .character-count {
     color: #f59e0b;
     font-size: 0.875rem;
     margin-left: 0.5rem;
-  }
-
-  .print-preview {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: white;
-    z-index: 1000;
-    overflow-y: auto;
-    padding: 2rem;
-  }
-
-  .print-preview-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1rem;
-    padding-bottom: 1rem;
-    border-bottom: 1px solid #e5e7eb;
-  }
-
-  .header-left {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-  }
-
-  .back-button {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 1rem;
-    background: #f3f4f6;
-    border: 1px solid #e5e7eb;
-    border-radius: 0.375rem;
-    color: #4b5563;
-    font-size: 0.875rem;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-
-  .back-button:hover {
-    background: #e5e7eb;
-    color: #1f2937;
-  }
-
-  .back-button svg {
-    width: 1.25rem;
-    height: 1.25rem;
-  }
-
-  .print-preview-header h2 {
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: #1f2937;
-  }
-
-  .close-button {
-    font-size: 1.5rem;
-    color: #6b7280;
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 0.5rem;
-    line-height: 1;
-    border-radius: 0.375rem;
-  }
-
-  .close-button:hover {
-    background: #f3f4f6;
-    color: #1f2937;
-  }
-
-  @media print {
-    .print-preview-header {
-      display: none;
-    }
-  }
-
-  .list-item.locked {
-    opacity: 0.8;
-    cursor: not-allowed;
-  }
-
-  .list-item.locked:hover {
-    background: #f8fafc;
-  }
-
-  .sketch-list-item.locked {
-    opacity: 0.8;
-    cursor: not-allowed;
-  }
-
-  .sketch-list-item.locked:hover {
-    background: #f8fafc;
-  }
-
-  .list-item.dragging {
-    opacity: 0.5;
-  }
-
-  .list-item.drag-over {
-    border-top: 2px solid #3b82f6;
-  }
-
-  .sketch-list-item.dragging {
-    opacity: 0.5;
-  }
-
-  .sketch-list-item.drag-over {
-    border-top: 2px solid #3b82f6;
   }
 
   .performer-filter-wrapper {
@@ -1268,33 +1163,6 @@
     gap: 0.5rem;
     padding: 0.5rem;
     margin-top: 2rem;
-  }
-
-  .collapsed-button {
-    width: 32px;
-    height: 32px;
-    background: #e9ecef;
-    border: none;
-    border-radius: 4px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    color: #495057;
-  }
-
-  .collapsed-button:hover {
-    background: #dee2e6;
-    color: #212529;
-  }
-
-  .sidebar.collapsed {
-    width: 50px;
-    padding: 1rem 0.5rem;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
   }
 
   .sidebar-button {
@@ -1353,5 +1221,31 @@
   .filter-option.active {
     background: #e9ecef;
     color: #212529;
+  }
+
+  .sketch-list-item {
+    position: relative;
+    transition: all 0.2s ease;
+    cursor: move;
+  }
+
+  .sketch-list-item.locked {
+    background: #f8fafc;
+    cursor: not-allowed;
+  }
+
+  .sketch-list-item.drag-over::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: -2px;
+    height: 2px;
+    background-color: #3b82f6;
+    z-index: 1;
+  }
+
+  .sketch-list-item.dragging {
+    opacity: 0.5;
   }
 </style>

@@ -43,7 +43,7 @@
           <span class="title">{sketch.title}</span>
           <span class="duration">{formatDuration(sketch.duration)}</span>
         </div>
-        
+
         <div class="performers">
           {formatPerformers(sketch)}
         </div>
@@ -163,11 +163,6 @@
       margin: 0.5cm;
     }
 
-    body {
-      margin: 0;
-      padding: 0;
-    }
-
     .print-container {
       padding: 0;
     }
@@ -176,4 +171,4 @@
       break-inside: avoid;
     }
   }
-</style> 
+</style>

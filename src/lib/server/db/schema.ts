@@ -19,6 +19,7 @@ export const sketchShows = sqliteTable('sketch_shows', {
 	id: text('id').primaryKey(),
 	title: text('title').notNull(),
 	description: text('description'),
+	position: integer('position').notNull().default(0),
 	created_at: text('created_at').notNull(),
 	updated_at: text('updated_at').notNull()
 });

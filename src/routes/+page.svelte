@@ -5,7 +5,16 @@
 
   const { data } = $props();
 
-  let shows = $state(data.shows);
+  interface Show {
+    id: string;
+    title: string;
+    description: string | null;
+    created_at: string;
+    updated_at: string;
+    position: number;
+  }
+
+  let shows = $state<Show[]>(data.shows);
   let isDragging = $state(false);
   let showForm = $state(false);
   let newShow = $state({
@@ -25,7 +34,7 @@
     shows = items;
 
     // Update positions in the database
-    const updates = items.map((show: { id: string }, index: number) => ({
+    const updates = items.map((show: Show, index: number) => ({
       id: show.id,
       position: index
     }));
@@ -50,10 +59,13 @@
   }
 
   async function handleCreate() {
-    const show = {
+    const now = new Date().toISOString();
+    const show: Show = {
       id: crypto.randomUUID(),
       ...newShow,
-      position: shows.length
+      position: shows.length,
+      created_at: now,
+      updated_at: now
     };
 
     try {

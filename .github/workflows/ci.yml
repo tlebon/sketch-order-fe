@@ -44,15 +44,27 @@ jobs:
         run: pnpm install
 
       - name: Build
-        run: pnpm run build
+        run: |
+          pnpm run build
+          if [ ! -d ".svelte-kit/cloudflare" ]; then
+            echo "Build directory not found!"
+            ls -la .svelte-kit
+            exit 1
+          fi
         env:
           VITE_BASE_PATH: /${{ env.REPO_NAME }}/
+
+      - name: List build directory contents
+        run: |
+          echo "Contents of build directory:"
+          ls -la .svelte-kit/cloudflare/
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: build
-          path: build/
+          path: .svelte-kit/cloudflare/
+          if-no-files-found: error
 
   deploy:
     needs: build
@@ -68,12 +80,17 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: build
-          path: build/
+          path: .svelte-kit/cloudflare/
+
+      - name: Verify downloaded artifacts
+        run: |
+          echo "Contents of build directory after download:"
+          ls -la .svelte-kit/cloudflare/
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./build
+          publish_dir: ./.svelte-kit/cloudflare
           publish_branch: gh-pages
           commit_message: "Deploy to GitHub Pages"

@@ -19,6 +19,7 @@ try {
       id TEXT PRIMARY KEY,
       title TEXT NOT NULL,
       description TEXT,
+      position INTEGER NOT NULL DEFAULT 0,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP
     )
@@ -72,7 +73,7 @@ export function createClient() {
   return {
     // Sketch Show operations
     async getSketchShows() {
-      return await db.select().from(sketchShows).orderBy(sketchShows.created_at);
+      return await db.select().from(sketchShows).orderBy(sketchShows.position);
     },
 
     async getSketchShow(id: string) {
@@ -242,7 +243,7 @@ export function createClient() {
           // Create the sketch
           const [sketch] = await tx.insert(sketches).values({
             ...sketchData,
-            locked: data.locked ? 1 : 0,
+            locked: data.locked,
             created_at: now,
             updated_at: now
           }).returning();
@@ -291,7 +292,7 @@ export function createClient() {
     async toggleSketchLock(id: string, locked: boolean) {
       await db
         .update(sketches)
-        .set({ locked: locked ? 1 : 0 })
+        .set({ locked })
         .where(sql`id = ${id}`);
     },
 
@@ -333,7 +334,6 @@ export function createClient() {
           .update(sketches)
           .set({
             ...sketchData,
-            locked: data.locked !== undefined ? (data.locked ? 1 : 0) : undefined,
             updated_at: new Date().toISOString()
           })
           .where(sql`id = ${id}`);

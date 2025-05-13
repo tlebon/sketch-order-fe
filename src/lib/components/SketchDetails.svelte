@@ -226,57 +226,66 @@
         <div class="view-mode">
           <div class="header">
             <h2>{sketch.title}</h2>
-            <button type="button" onclick={handleEdit}>Edit</button>
+            <button type="button" onclick={handleEdit} class="edit-button">Edit</button>
           </div>
 
           {#if sketch.description}
             <p class="description">{sketch.description}</p>
           {/if}
 
-          <div class="stats">
-            <span>Duration: {sketch.duration} min</span>
-            <span>Characters: {sketch.chars}</span>
-            <span>Casted: {sketch.casted}</span>
+          <div class="stats-container">
+            <div class="stat-item">
+              <span class="stat-label">Duration</span>
+              <span class="stat-value">{sketch.duration} min</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Characters</span>
+              <span class="stat-value">{sketch.chars}</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Casted</span>
+              <span class="stat-value">{sketch.casted}</span>
+            </div>
           </div>
 
           {#if sketch.character_performers?.length}
-            <div class="cast-list">
-              <h4>Cast</h4>
-              <ul>
+            <div class="cast-section">
+              <h4 class="section-title">Cast</h4>
+              <div class="cast-grid">
                 {#each sketch.character_performers as cp}
-                  <li>
-                    <span class="character">{cp.character_name}</span>
-                    <span class="performer">{cp.performer_name}</span>
-                  </li>
+                  <div class="cast-item">
+                    <span class="character-name">{cp.character_name}</span>
+                    <span class="performer-name">{cp.performer_name}</span>
+                  </div>
                 {/each}
-              </ul>
+              </div>
             </div>
           {/if}
 
           <!-- Tech Details Section -->
-          <div class="tech-details mt-4 pt-4 border-t border-gray-200">
-            <h4 class="text-lg font-semibold text-gray-700 mb-2">Tech Details</h4>
+          <div class="tech-section">
+            <h4 class="section-title">Tech Details</h4>
             {#if sketch.techDetails}
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                <div>
-                  <strong class="text-gray-600">Cues:</strong>
-                  <p class="text-gray-800 whitespace-pre-wrap">{sketch.techDetails.cues || 'N/A'}</p>
+              <div class="tech-grid">
+                <div class="tech-item">
+                  <span class="tech-label">Cues</span>
+                  <span class="tech-value">{sketch.techDetails.cues || 'N/A'}</span>
                 </div>
-                <div>
-                  <strong class="text-gray-600">Props:</strong>
-                  <p class="text-gray-800 whitespace-pre-wrap">{sketch.techDetails.props || 'N/A'}</p>
+                <div class="tech-item">
+                  <span class="tech-label">Props</span>
+                  <span class="tech-value">{sketch.techDetails.props || 'N/A'}</span>
                 </div>
-                <div>
-                  <strong class="text-gray-600">Costume:</strong>
-                  <p class="text-gray-800 whitespace-pre-wrap">{sketch.techDetails.costume || 'N/A'}</p>
+                <div class="tech-item">
+                  <span class="tech-label">Costume</span>
+                  <span class="tech-value">{sketch.techDetails.costume || 'N/A'}</span>
                 </div>
-                <div>
-                  <strong class="text-gray-600">Stage Dressing:</strong>
-                  <p class="text-gray-800 whitespace-pre-wrap">{sketch.techDetails.stage_dressing || 'N/A'}</p>
+                <div class="tech-item">
+                  <span class="tech-label">Stage Dressing</span>
+                  <span class="tech-value">{sketch.techDetails.stage_dressing || 'N/A'}</span>
                 </div>
               </div>
             {:else}
-              <p class="text-gray-500 italic">No tech details available for this sketch.</p>
+              <p class="no-tech-details">No tech details available for this sketch.</p>
             {/if}
           </div>
           <!-- End Tech Details Section -->
@@ -288,169 +297,249 @@
 </div>
 
 <style>
-  .sketch-details {
-    background: white;
-    padding: 1.5rem;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  .edit-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .form-group label {
+    font-weight: 500;
+    color: #374151;
+    margin-bottom: 0.25rem;
+  }
+  .form-group input,
+  .form-group textarea {
+    padding: 0.5rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+    font-size: 1rem;
+    background: #f9fafb;
+    color: #111827;
+    resize: vertical;
+  }
+  .form-group textarea {
+    min-height: 60px;
+    max-height: 200px;
+  }
+  .character-inputs {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+  .character-inputs input {
+    flex: 1 1 0;
+  }
+  .character-inputs button {
+    padding: 0.5rem 1rem;
+    background: #3b82f6;
+    color: white;
+    border: none;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background 0.2s;
+  }
+  .character-inputs button:hover {
+    background: #2563eb;
+  }
+  .character-list {
+    margin-top: 0.5rem;
+    background: #f3f4f6;
+    border-radius: 0.375rem;
+    padding: 0.5rem 0.75rem;
+  }
+  .character-list ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  .character-list li {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0;
+  }
+  .character-list .character {
+    font-weight: 500;
+    color: #374151;
+  }
+  .character-list .performer {
+    color: #6b7280;
+  }
+  .remove-button {
+    background: none;
+    border: none;
+    color: #ef4444;
+    font-size: 1.25rem;
+    cursor: pointer;
+    margin-left: auto;
+    padding: 0 0.5rem;
+    border-radius: 0.25rem;
+    transition: background 0.2s;
+  }
+  .remove-button:hover {
+    background: #fee2e2;
+  }
+  .form-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+    margin-top: 1rem;
+  }
+  .form-actions button {
+    padding: 0.5rem 1.25rem;
+    border-radius: 0.375rem;
+    border: none;
+    font-weight: 500;
+    cursor: pointer;
+    background: #e5e7eb;
+    color: #374151;
+    transition: background 0.2s;
+  }
+  .form-actions button:last-child {
+    background: #3b82f6;
+    color: white;
+  }
+  .form-actions button:last-child:hover {
+    background: #2563eb;
+  }
+
+  .view-mode {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
   }
 
   .header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 1rem;
+    margin-bottom: 0.25rem;
   }
 
-  h2 {
-    margin: 0;
+  .header h2 {
     font-size: 1.5rem;
+    font-weight: 600;
+    color: #1f2937;
   }
 
-  .description {
-    margin: 1rem 0;
-    color: #666;
-  }
-
-  .stats {
-    display: flex;
-    gap: 1rem;
-    margin: 1rem 0;
-    font-size: 0.9rem;
-    color: #666;
-  }
-
-  .cast-list {
-    margin-top: 1rem;
-  }
-
-  .cast-list h4 {
-    margin: 0 0 0.5rem 0;
-    font-size: 1rem;
-  }
-
-  .cast-list ul {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-  }
-
-  .cast-list li {
-    display: flex;
-    justify-content: space-between;
-    padding: 0.5rem;
-    border-bottom: 1px solid #eee;
-  }
-
-  .cast-list li:last-child {
-    border-bottom: none;
-  }
-
-  .character {
-    font-weight: bold;
-  }
-
-  .performer {
-    color: #666;
-  }
-
-  .form-group {
-    margin-bottom: 1rem;
-  }
-
-  label {
-    display: block;
-    margin-bottom: 0.5rem;
-    font-weight: 500;
-    color: #333;
-  }
-
-  input,
-  textarea {
-    width: 100%;
-    padding: 0.5rem;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    font-size: 1rem;
-  }
-
-  textarea {
-    min-height: 100px;
-    resize: vertical;
-  }
-
-  .character-inputs {
-    display: grid;
-    grid-template-columns: 1fr 1fr auto;
-    gap: 0.5rem;
-    align-items: center;
-  }
-
-  .character-list {
-    margin: 1rem 0;
-  }
-
-  .character-list h4 {
-    margin: 0 0 0.5rem 0;
-    font-size: 1rem;
-  }
-
-  .character-list ul {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-  }
-
-  .character-list li {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.5rem;
-    background: #f5f5f5;
-    border-radius: 4px;
-    margin-bottom: 0.5rem;
-  }
-
-  .remove-button {
-    background: none;
-    border: none;
-    color: #f44336;
-    font-size: 1.2rem;
-    cursor: pointer;
-    padding: 0 0.5rem;
-  }
-
-  .form-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 1rem;
-    margin-top: 1rem;
-  }
-
-  button {
+  .edit-button {
     padding: 0.5rem 1rem;
+    background-color: #3b82f6;
+    color: white;
     border: none;
-    border-radius: 4px;
-    font-size: 1rem;
+    border-radius: 0.375rem;
+    font-weight: 500;
     cursor: pointer;
     transition: background-color 0.2s;
   }
 
-  button[type="button"] {
-    background: #f5f5f5;
-    color: #333;
+  .edit-button:hover {
+    background-color: #2563eb;
   }
 
-  button[type="button"]:hover {
-    background: #e0e0e0;
+  .description {
+    color: #4b5563;
+    line-height: 1.5;
+    margin-bottom: 0.75rem;
   }
 
-  button[type="submit"] {
-    background: #4CAF50;
-    color: white;
+  .stats-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 0.75rem;
+    padding: 0.75rem;
+    background-color: #f9fafb;
+    border-radius: 0.5rem;
+    margin-bottom: 0.75rem;
   }
 
-  button[type="submit"]:hover {
-    background: #45a049;
+  .stat-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
   }
-</style> 
+
+  .stat-label {
+    font-size: 0.875rem;
+    color: #6b7280;
+    font-weight: 500;
+  }
+
+  .stat-value {
+    font-size: 1.125rem;
+    color: #1f2937;
+    font-weight: 600;
+  }
+
+  .cast-section {
+    background-color: #f9fafb;
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .tech-section {
+    background-color: #f9fafb;
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+  }
+
+  .section-title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .cast-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 0.5rem;
+  }
+
+  .tech-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 0.5rem;
+  }
+
+  .cast-item, .tech-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 0.5rem;
+    background-color: white;
+    border-radius: 0.375rem;
+    border: 1px solid #e5e7eb;
+  }
+
+  .character-name, .tech-label {
+    font-weight: 500;
+    color: #1f2937;
+    font-size: 0.875rem;
+  }
+
+  .performer-name, .tech-value {
+    font-size: 0.875rem;
+    color: #6b7280;
+    white-space: pre-wrap;
+  }
+
+  .no-tech-details {
+    color: #6b7280;
+    font-style: italic;
+    font-size: 0.875rem;
+    padding: 0.5rem;
+    background-color: white;
+    border-radius: 0.375rem;
+    border: 1px solid #e5e7eb;
+  }
+</style>

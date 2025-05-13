@@ -13,8 +13,12 @@
   const dispatch = createEventDispatcher();
 
   function handleClick(e: MouseEvent) {
-    if (e.target instanceof HTMLElement && e.target.closest('button, .cast-toggle')) return;
-    dispatch('select', { sketch });
+    if (e.target instanceof HTMLElement && e.target.closest('button, .cast-toggle')) {
+      return;
+    }
+    if (e.target instanceof HTMLElement && e.target.closest('.card')) {
+      dispatch('select', { sketch });
+    }
   }
 
   function handleLock(e: MouseEvent) {
@@ -47,7 +51,7 @@
 </script>
 
 <div
-  class="card {isSelected ? 'selected border-blue-500' : 'border-gray-200'} border bg-white rounded-lg shadow hover:shadow-md transition-all duration-200 flex flex-col"
+  class="card {isSelected ? 'selected border-blue-500' : 'border-gray-200'} {sketch.locked ? 'locked' : ''} border bg-white rounded-lg shadow hover:shadow-md transition-all duration-200 flex flex-col"
   on:click={handleClick}
   on:keydown={handleKeydown}
   tabindex="0"
@@ -67,7 +71,7 @@
         <button
           class="action-button lock-button"
           class:locked={sketch.locked}
-          on:click={handleLock}
+          on:click|stopPropagation={handleLock}
           aria-label={sketch.locked ? 'Unlock sketch' : 'Lock sketch'}
           title={sketch.locked ? 'Unlock sketch' : 'Lock sketch'}
         >
@@ -79,7 +83,7 @@
         </button>
         <button
           class="action-button delete-button"
-          on:click={handleDelete}
+          on:click|stopPropagation={handleDelete}
           aria-label="Delete sketch"
           title="Delete sketch"
         >
@@ -136,8 +140,13 @@
      outline-offset: 2px;
   }
 
-  .warning-icon {
-    color: #f59e0b;
+  .card.locked {
+    background: #f8fafc;
+    cursor: not-allowed;
+  }
+
+  .card.locked:hover {
+    background: #f8fafc;
   }
 
   .action-button {
