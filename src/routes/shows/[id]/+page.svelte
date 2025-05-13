@@ -19,6 +19,7 @@
   import ViewControls from '$lib/components/show/ViewControls.svelte';
   import SketchListView from '$lib/components/show/SketchListView.svelte';
   import SketchGridView from '$lib/components/show/SketchGridView.svelte';
+  import ShowPrintViewControls from '$lib/components/show/ShowPrintViewControls.svelte';
 
   export let data: PageData;
   const dispatch = createEventDispatcher();
@@ -366,56 +367,15 @@
 
 {#if showPrintView}
   <div class="fixed inset-0 bg-white z-50 overflow-auto">
-    <div class="sticky top-0 bg-white border-b border-gray-200 p-4 flex items-center justify-between print:hidden">
-      <div class="flex items-center gap-4">
-        <button
-          class="flex items-center gap-2 text-gray-600 hover:text-gray-900"
-          on:click={() => showPrintView = false}
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
-            <path d="m15 18-6-6 6-6"/>
-          </svg>
-          Back to Show
-        </button>
-        <h2 class="text-lg font-medium text-gray-900">Print View - {printVersion}</h2>
-      </div>
-      <div class="flex items-center gap-4">
-        <div class="performer-filter-wrapper">
-          <PerformerFilter
-            performers={performers}
-            selectedPerformer={printViewPerformer}
-            on:select={(e) => printViewPerformer = e.detail.performer}
-          />
-        </div>
-        <div class="flex gap-2">
-          <button
-            class="print-view-button {printVersion === 'greenroom' ? 'active' : ''}"
-            on:click={() => printVersion = 'greenroom'}
-          >
-            Greenroom
-          </button>
-          <button
-            class="print-view-button {printVersion === 'hallway' ? 'active' : ''}"
-            on:click={() => printVersion = 'hallway'}
-          >
-            Hallway
-          </button>
-          <button
-            class="print-view-button {printVersion === 'techbooth' ? 'active' : ''}"
-            on:click={() => printVersion = 'techbooth'}
-          >
-            Tech Booth
-          </button>
-        </div>
-        <button
-          class="text-gray-600 hover:text-gray-900"
-          on:click={() => window.print()}
-          aria-label="Print set list"
-        >
-          <Printer size={20} />
-        </button>
-      </div>
-    </div>
+    <ShowPrintViewControls
+      {printVersion}
+      {printViewPerformer}
+      {performers}
+      on:back={() => showPrintView = false}
+      on:versionChange={e => printVersion = e.detail.printVersion}
+      on:performerSelect={e => printViewPerformer = e.detail.performer}
+      on:print={handlePrint}
+    />
     <div class="p-4">
       <PrintSetList
         sketches={printViewFilteredSketches}
@@ -558,38 +518,5 @@
     .modal-backdrop {
       display: none;
     }
-  }
-
-  .performer-filter-wrapper {
-    min-width: 200px;
-  }
-
-  .performer-filter-wrapper :global(.performer-filter) {
-    margin: 0;
-  }
-
-  .performer-filter-wrapper :global(.performer-filter select) {
-    height: 36px;
-    padding: 0 0.75rem;
-    border: 1px solid #e5e7eb;
-    border-radius: 0.375rem;
-    background-color: white;
-    font-size: 0.875rem;
-    color: #374151;
-    transition: all 0.2s;
-  }
-
-  .performer-filter-wrapper :global(.performer-filter select:hover) {
-    border-color: #d1d5db;
-  }
-
-  .performer-filter-wrapper :global(.performer-filter select:focus) {
-    outline: none;
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
-  }
-
-  .performer-filter-wrapper :global(.performer-filter label) {
-    display: none;
   }
 </style>
