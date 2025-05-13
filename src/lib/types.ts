@@ -43,3 +43,10 @@ export interface SketchShow {
   created_at?: string | null;
   updated_at?: string | null;
 }
+
+export interface Show {
+  id: string;
+  title: string;
+  created_at: string;
+  updated_at: string;
+}
