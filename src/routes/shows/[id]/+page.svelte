@@ -29,6 +29,7 @@
   let expandedSketchId: string | null = null;
   let draggedSketch: Sketch | null = null;
   let draggedOverIndex: number | null = null;
+  let printViewPerformer: string | null = null;
 
   function formatDuration(minutes: number): string {
     const hours = Math.floor(minutes / 60);
@@ -43,6 +44,10 @@
 
   $: filteredSketches = selectedPerformer
     ? sketches.filter(s => s.character_performers?.some(cp => cp.performer_name === selectedPerformer))
+    : sketches;
+
+  $: printViewFilteredSketches = printViewPerformer
+    ? sketches.filter(s => s.character_performers?.some(cp => cp.performer_name === printViewPerformer))
     : sketches;
 
   onMount(async () => {
@@ -339,20 +344,67 @@
 </script>
 
 {#if showPrintView}
-  <div class="print-preview">
-    <div class="print-preview-header">
-      <div class="header-left">
-        <button class="back-button" on:click={() => showPrintView = false}>
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-            <path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd" />
+  <div class="fixed inset-0 bg-white z-50 overflow-auto">
+    <div class="sticky top-0 bg-white border-b border-gray-200 p-4 flex items-center justify-between print:hidden">
+      <div class="flex items-center gap-4">
+        <button
+          class="flex items-center gap-2 text-gray-600 hover:text-gray-900"
+          on:click={() => showPrintView = false}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
+            <path d="m15 18-6-6 6-6"/>
           </svg>
           Back to Show
         </button>
-        <h2>Print Preview - {printVersion === 'greenroom' ? 'Green Room' : printVersion === 'hallway' ? 'Hallway' : 'Tech Booth'} Version</h2>
+        <h2 class="text-lg font-medium text-gray-900">Print View - {printVersion}</h2>
       </div>
-      <button class="close-button" on:click={() => showPrintView = false}>×</button>
+      <div class="flex items-center gap-4">
+        <div class="performer-filter-wrapper">
+          <PerformerFilter
+            performers={performers}
+            selectedPerformer={printViewPerformer}
+            on:select={(e) => printViewPerformer = e.detail.performer}
+          />
+        </div>
+        <div class="flex gap-2">
+          <button
+            class="print-view-button {printVersion === 'greenroom' ? 'active' : ''}"
+            on:click={() => printVersion = 'greenroom'}
+          >
+            Greenroom
+          </button>
+          <button
+            class="print-view-button {printVersion === 'hallway' ? 'active' : ''}"
+            on:click={() => printVersion = 'hallway'}
+          >
+            Hallway
+          </button>
+          <button
+            class="print-view-button {printVersion === 'techbooth' ? 'active' : ''}"
+            on:click={() => printVersion = 'techbooth'}
+          >
+            Tech Booth
+          </button>
+        </div>
+        <button
+          class="text-gray-600 hover:text-gray-900"
+          on:click={() => window.print()}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
+            <polyline points="6 9 6 2 18 2 18 9"/>
+            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+            <rect width="12" height="8" x="6" y="14"/>
+          </svg>
+        </button>
+      </div>
     </div>
-    <PrintSetList {sketches} showTitle={show.title} version={printVersion} />
+    <div class="p-4">
+      <PrintSetList
+        sketches={printViewFilteredSketches}
+        showTitle={show.title}
+        version={printVersion}
+      />
+    </div>
   </div>
 {:else}
   <div class="show-page">
@@ -979,5 +1031,38 @@
 
   .sketch-list-item.drag-over {
     border-top: 2px solid #3b82f6;
+  }
+
+  .performer-filter-wrapper {
+    min-width: 200px;
+  }
+
+  .performer-filter-wrapper :global(.performer-filter) {
+    margin: 0;
+  }
+
+  .performer-filter-wrapper :global(.performer-filter select) {
+    height: 36px;
+    padding: 0 0.75rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.375rem;
+    background-color: white;
+    font-size: 0.875rem;
+    color: #374151;
+    transition: all 0.2s;
+  }
+
+  .performer-filter-wrapper :global(.performer-filter select:hover) {
+    border-color: #d1d5db;
+  }
+
+  .performer-filter-wrapper :global(.performer-filter select:focus) {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+  }
+
+  .performer-filter-wrapper :global(.performer-filter label) {
+    display: none;
   }
 </style> 
