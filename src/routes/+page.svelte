@@ -1,7 +1,7 @@
 <script lang="ts">
   import { dndzone } from 'svelte-dnd-action';
   import type { PageData } from './$types';
-  import { Trash2 } from 'lucide-icons';
+  import { Trash2 } from '@lucide/svelte';
 
   const { data } = $props();
 

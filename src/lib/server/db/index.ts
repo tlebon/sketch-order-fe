@@ -9,6 +9,9 @@ const dbPath = join(process.cwd(), 'sketches.db');
 const sqlite = new Database(dbPath);
 const db = drizzle(sqlite);
 
+// Export the db instance
+export { db };
+
 // Create tables if they don't exist
 try {
   sqlite.exec(`
@@ -81,7 +84,12 @@ export function createClient() {
     },
 
     async createSketchShow(data: { id: string; title: string; description?: string }) {
-      await db.insert(sketchShows).values(data);
+      const now = new Date().toISOString();
+      await db.insert(sketchShows).values({
+        ...data,
+        created_at: now,
+        updated_at: now
+      });
     },
 
     async deleteSketchShow(id: string) {
@@ -101,7 +109,7 @@ export function createClient() {
           await tx
             .delete(characterPerformers)
             .where(sql`sketch_id IN (${sql.join(ids, sql`, `)})`);
-          
+
           // Delete from sketchTechDetails
           await tx
             .delete(sketchTechDetails)
@@ -112,7 +120,7 @@ export function createClient() {
             .delete(sketches)
             .where(sql`show_id = ${id}`);
         }
-        
+
         // 3. Finally, delete the show itself
         await tx
           .delete(sketchShows)
@@ -155,7 +163,7 @@ export function createClient() {
       } else {
         query.where(sql`1=1`); // Keep this if no showId to fetch all, or adjust as needed
       }
-      
+
       const rows = await query;
 
       if (rows.length === 0) {
@@ -167,7 +175,7 @@ export function createClient() {
         .select()
         .from(characterPerformers)
         .where(sql`sketch_id IN (${sql.join(sketchIds, sql`, `)})`);
-      
+
       return rows.map(row => {
         const sketchPart = {
           id: row.id,
@@ -234,20 +242,19 @@ export function createClient() {
           // Create the sketch
           const [sketch] = await tx.insert(sketches).values({
             ...sketchData,
-            raw_data: sketchData.raw_data ? JSON.stringify(sketchData.raw_data) : null, // Stringify raw_data
             locked: data.locked ? 1 : 0,
             created_at: now,
             updated_at: now
           }).returning();
-          
+
           // Create character performers if they exist, one by one within the transaction
           if (character_performers?.length) {
             for (const cp of character_performers) {
               const performerId = crypto.randomUUID(); // Ensure unique ID for each performer
-              
+
               const performerData = {
                 id: performerId,
-                sketch_id: sketch.id, 
+                sketch_id: sketch.id,
                 character_name: cp.character_name,
                 performer_name: cp.performer_name,
                 created_at: now,
@@ -256,7 +263,7 @@ export function createClient() {
               await tx.insert(characterPerformers).values(performerData);
             }
           }
-          
+
           // Return the created sketch ID to fetch the full object later
           return sketch;
         });
@@ -264,7 +271,7 @@ export function createClient() {
         // Get the complete sketch with its character performers outside the transaction
         const finalSketches = await this.getSketches(createdSketchResult.show_id);
         return finalSketches.find(s => s.id === createdSketchResult.id) || createdSketchResult;
-        
+
       } catch (error) {
         console.error('Error in createSketch transaction:', error); // Keep this generic error log
         // No need to explicitly rollback, db.transaction handles it on error
@@ -295,12 +302,12 @@ export function createClient() {
         await tx
           .delete(characterPerformers)
           .where(sql`sketch_id = ${id}`);
-        
+
         // Second, delete associated sketch tech details
         await tx
           .delete(sketchTechDetails)
           .where(sql`sketch_id = ${id}`);
-        
+
         // Then, delete the sketch itself
         await tx
           .delete(sketches)
@@ -320,13 +327,13 @@ export function createClient() {
       character_performers?: { character_name: string; performer_name: string }[];
     }) {
       const { character_performers, ...sketchData } = data;
-      
+
       if (Object.keys(sketchData).length > 0) {
         await db
           .update(sketches)
           .set({
             ...sketchData,
-            locked: data.locked ? 1 : 0,
+            locked: data.locked !== undefined ? (data.locked ? 1 : 0) : undefined,
             updated_at: new Date().toISOString()
           })
           .where(sql`id = ${id}`);

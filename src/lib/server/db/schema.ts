@@ -1,4 +1,3 @@
-import { sql } from 'drizzle-orm';
 import { text, integer, sqliteTable, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
 export const user = sqliteTable('user', {
@@ -32,7 +31,7 @@ export const sketches = sqliteTable('sketches', {
 	duration: integer('duration').notNull(),
 	chars: integer('chars').notNull(),
 	casted: integer('casted').notNull(),
-	locked: integer('locked', { mode: 'boolean' }).notNull(),
+	locked: integer('locked', { mode: 'boolean' }).notNull().default(false),
 	position: integer('position').notNull(),
 	raw_data: text('raw_data'),
 	created_at: text('created_at').notNull(),
