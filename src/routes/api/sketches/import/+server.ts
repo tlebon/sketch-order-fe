@@ -22,24 +22,35 @@ export const POST: RequestHandler = async ({ request }) => {
     const results = [];
 
     if (importType === 'sketches') {
-      for (const sketch of data) {
-        const newSketch = await db.createSketch({
-          id: crypto.randomUUID(),
-          show_id,
-          title: sketch.title,
-          description: sketch.description || '',
-          duration: sketch.duration,
-          chars: sketch.chars,
-          casted: sketch.character_performers?.length || 0,
-          locked: false,
-          position: sketch.position,
-          raw_data: sketch.raw_data,
-          character_performers: sketch.character_performers?.map((cp: CharacterPerformer) => ({
-            character_name: cp.character_name,
-            performer_name: cp.performer_name
-          })) || []
-        });
-        results.push({ success: true, sketch: newSketch });
+      // Get the current number of sketches for this show
+      const existingSketches = await db.getSketches(show_id);
+      const startPosition = existingSketches ? existingSketches.length : 0;
+
+      for (const [i, sketch] of data.entries()) {
+        console.log('Inserting sketch:', sketch);
+        try {
+          const newSketch = await db.createSketch({
+            id: crypto.randomUUID(),
+            show_id,
+            title: sketch.title,
+            description: sketch.description || '',
+            duration: sketch.duration,
+            chars: sketch.chars,
+            casted: sketch.character_performers?.length || 0,
+            locked: false,
+            position: startPosition + i,
+            raw_data: JSON.stringify(sketch.raw_data),
+            character_performers: sketch.character_performers?.map((cp: CharacterPerformer) => ({
+              character_name: cp.character_name,
+              performer_name: cp.performer_name
+            })) || []
+          });
+          results.push({ success: true, sketch: newSketch });
+        } catch (err) {
+          const errorMsg = err instanceof Error ? err.message : String(err);
+          console.error('Failed to insert sketch:', err);
+          results.push({ success: false, error: errorMsg, sketch });
+        }
       }
     } else if (importType === 'techDetails') {
       const existingSketches = await db.getSketches(show_id);
@@ -49,7 +60,7 @@ export const POST: RequestHandler = async ({ request }) => {
 
       for (const techItem of data) {
         const sketchNameFromCsv = techItem.sketch;
-        
+
         const matchedSketch = existingSketches.find(
           s => s.title.toLowerCase() === sketchNameFromCsv?.toLowerCase()
         );
@@ -62,6 +73,8 @@ export const POST: RequestHandler = async ({ request }) => {
             props: techItem.props || null,
             costume: techItem.costume || null,
             stage_dressing: techItem['stage dressing'] || techItem.stage_dressing || null,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
           };
           try {
             const upsertedTechDetail = await db.upsertSketchTechDetails(techDataToUpsert);
@@ -85,4 +98,4 @@ export const POST: RequestHandler = async ({ request }) => {
     }
     return json({ error: errorMessage }, { status: 500 });
   }
-}; 
+};

@@ -4,8 +4,8 @@ import { sketches, sketchShows, characterPerformers, sketchTechDetails, type New
 import { sql, eq } from 'drizzle-orm';
 import { join } from 'path';
 
-// Initialize SQLite database for local development
-const dbPath = join(process.cwd(), 'sketches.db');
+// Use DATABASE_URL from .env if available, otherwise default to sketches.db
+const dbPath = process.env.DATABASE_URL || join(process.cwd(), 'sketches.db');
 const sqlite = new Database(dbPath);
 const db = drizzle(sqlite);
 
@@ -68,6 +68,20 @@ try {
   console.error('Failed to initialize database:', error);
   throw error;
 }
+
+type NewSketch = {
+  id: string;
+  show_id: string;
+  title: string;
+  description: string;
+  duration: number;
+  chars: number;
+  casted: number;
+  locked: boolean;
+  position: number;
+  raw_data?: string;
+  character_performers?: { character_name: string; performer_name: string }[];
+};
 
 export function createClient() {
   return {
@@ -190,7 +204,17 @@ export function createClient() {
           position: row.position,
           raw_data: row.raw_data,
           created_at: row.created_at,
-          updated_at: row.updated_at
+          updated_at: row.updated_at,
+          character_performers: characterPerformerRows
+            .filter(cp => cp.sketch_id === row.id)
+            .map(cp => ({
+              id: cp.id,
+              sketch_id: cp.sketch_id,
+              character_name: cp.character_name,
+              performer_name: cp.performer_name,
+              created_at: cp.created_at,
+              updated_at: cp.updated_at
+            }))
         };
 
         const techDetailsPart = row.tech_id ? {
@@ -206,78 +230,32 @@ export function createClient() {
 
         return {
           ...sketchPart,
-          techDetails: techDetailsPart,
-          character_performers: characterPerformerRows
-            .filter(cp => cp.sketch_id === row.id)
-            .map(cp => ({
-              id: cp.id,
-              sketch_id: cp.sketch_id,
-              character_name: cp.character_name,
-              performer_name: cp.performer_name,
-              created_at: cp.created_at,
-              updated_at: cp.updated_at
-            }))
+          techDetails: techDetailsPart
         };
       });
     },
 
-    async createSketch(data: {
-      id: string;
-      show_id: string;
-      title: string;
-      description: string;
-      duration: number;
-      chars: number;
-      casted: number;
-      locked: boolean;
-      position: number;
-      raw_data?: string;
-      character_performers?: { character_name: string; performer_name: string }[];
-    }) {
-      const { character_performers, ...sketchData } = data;
+    async createSketch(sketch: NewSketch) {
+      const { character_performers, ...sketchData } = sketch;
       const now = new Date().toISOString();
+      const sketchWithTimestamps = { ...sketchData, created_at: now, updated_at: now };
 
-      try {
-        // Use Drizzle's transaction API
-        const createdSketchResult = await db.transaction(async (tx) => {
-          // Create the sketch
-          const [sketch] = await tx.insert(sketches).values({
-            ...sketchData,
-            locked: data.locked,
-            created_at: now,
-            updated_at: now
-          }).returning();
+      const result = await db.insert(sketches).values(sketchWithTimestamps).returning();
+      const newSketch = result[0];
 
-          // Create character performers if they exist, one by one within the transaction
-          if (character_performers?.length) {
-            for (const cp of character_performers) {
-              const performerId = crypto.randomUUID(); // Ensure unique ID for each performer
-
-              const performerData = {
-                id: performerId,
-                sketch_id: sketch.id,
-                character_name: cp.character_name,
-                performer_name: cp.performer_name,
-                created_at: now,
-                updated_at: now
-              };
-              await tx.insert(characterPerformers).values(performerData);
-            }
-          }
-
-          // Return the created sketch ID to fetch the full object later
-          return sketch;
-        });
-
-        // Get the complete sketch with its character performers outside the transaction
-        const finalSketches = await this.getSketches(createdSketchResult.show_id);
-        return finalSketches.find(s => s.id === createdSketchResult.id) || createdSketchResult;
-
-      } catch (error) {
-        console.error('Error in createSketch transaction:', error); // Keep this generic error log
-        // No need to explicitly rollback, db.transaction handles it on error
-        throw error;
+      if (character_performers && character_performers.length > 0) {
+        const characterPerformerValues = character_performers.map((cp: { character_name: string; performer_name: string }) => ({
+          id: crypto.randomUUID(),
+          sketch_id: newSketch.id,
+          character_name: cp.character_name,
+          performer_name: cp.performer_name,
+          created_at: now,
+          updated_at: now
+        }));
+        await db.insert(characterPerformers).values(characterPerformerValues);
       }
+
+      return newSketch;
     },
 
     async updateSketchOrder(sketchUpdates: { id: string; position: number }[]) {

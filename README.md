@@ -148,3 +148,4 @@ For more information, see the [LICENSE](LICENSE) file or visit [creativecommons.
 3. Lock sketches in place
 4. Make sure database works and deploy to stardog
 5. Import sketch scripts
+6. delta value for changing props between sketches 2 chairs/1 chair/1 table
