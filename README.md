@@ -31,17 +31,17 @@ cd sketch-running-order
 
 2. Install dependencies:
 ```bash
-npm install
+pnpm install
 ```
 
 3. Set up the database:
 ```bash
-npm run setup-db
+pnpm run setup-db
 ```
 
 4. Start the development server:
 ```bash
-npm run dev
+pnpm run dev
 ```
 
 The application will be available at `http://localhost:5173`
@@ -114,7 +114,7 @@ The application uses SQLite with Drizzle ORM. The schema includes:
 
 ### Building for Production
 ```bash
-npm run build
+pnpm run build
 ```
 
 The built application will be in the `build` directory.
