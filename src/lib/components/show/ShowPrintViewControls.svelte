@@ -186,4 +186,9 @@
   .print-btn:hover {
     background: #f3f4f6;
   }
+  @media print {
+    .print-header {
+      display: none !important;
+    }
+  }
 </style>
