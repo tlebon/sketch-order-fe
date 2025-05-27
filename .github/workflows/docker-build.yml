@@ -7,7 +7,7 @@ on:
     branches: [ main ]
 
 env:
-  REGISTRY: registry.digitalocean.com/your-registry
+  REGISTRY: registry.digitalocean.com/svelte-sketch-fe
   FRONTEND_IMAGE: svelte-sketch-fe-frontend
   OPTIMIZER_IMAGE: svelte-sketch-fe-optimizer
 
