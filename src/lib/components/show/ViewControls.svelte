@@ -2,6 +2,7 @@
   import { createEventDispatcher } from 'svelte';
   import ViewGrid from '@lucide/svelte/icons/layout-grid';
   import ViewList from '@lucide/svelte/icons/list';
+  import Wand2 from '@lucide/svelte/icons/wand-2';
 
   export let viewMode: 'grid' | 'list' = 'list';
   export let printVersion: 'greenroom' | 'hallway' | 'techbooth' = 'greenroom';
@@ -11,6 +12,7 @@
     viewModeChange: { viewMode: 'grid' | 'list' };
     printVersionChange: { printVersion: 'greenroom' | 'hallway' | 'techbooth' };
     showPrintViewChange: { showPrintView: boolean };
+    optimize: void;
   }>();
 
   function handleViewModeChange(mode: 'grid' | 'list') {
@@ -22,6 +24,10 @@
     printVersion = version;
     dispatch('printVersionChange', { printVersion: version });
     dispatch('showPrintViewChange', { showPrintView: true });
+  }
+
+  function handleOptimize() {
+    dispatch('optimize');
   }
 </script>
 
@@ -44,28 +50,39 @@
       <ViewList size={20} />
     </button>
   </div>
-  <div class="print-buttons">
+  <div class="action-buttons">
     <button
-      class="print-view-button"
-      class:active={showPrintView && printVersion === 'greenroom'}
-      on:click={() => handlePrintViewChange('greenroom')}
+      class="optimize-button"
+      on:click={handleOptimize}
+      aria-label="Optimize running order"
+      title="Optimize running order to minimize cast conflicts"
     >
-      Green Room
+      <Wand2 size={20} />
+      <span>Optimize</span>
     </button>
-    <button
-      class="print-view-button"
-      class:active={showPrintView && printVersion === 'hallway'}
-      on:click={() => handlePrintViewChange('hallway')}
-    >
-      Hallway
-    </button>
-    <button
-      class="print-view-button"
-      class:active={showPrintView && printVersion === 'techbooth'}
-      on:click={() => handlePrintViewChange('techbooth')}
-    >
-      Tech Booth
-    </button>
+    <div class="print-buttons">
+      <button
+        class="print-view-button"
+        class:active={showPrintView && printVersion === 'greenroom'}
+        on:click={() => handlePrintViewChange('greenroom')}
+      >
+        Green Room
+      </button>
+      <button
+        class="print-view-button"
+        class:active={showPrintView && printVersion === 'hallway'}
+        on:click={() => handlePrintViewChange('hallway')}
+      >
+        Hallway
+      </button>
+      <button
+        class="print-view-button"
+        class:active={showPrintView && printVersion === 'techbooth'}
+        on:click={() => handlePrintViewChange('techbooth')}
+      >
+        Tech Booth
+      </button>
+    </div>
   </div>
 </div>
 
@@ -83,6 +100,12 @@
   .view-buttons {
     display: flex;
     gap: 0.5rem;
+  }
+
+  .action-buttons {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
   }
 
   .print-buttons {
@@ -113,6 +136,25 @@
     background: #ced4da;
     color: #212529;
     font-weight: 500;
+  }
+
+  .optimize-button {
+    height: 32px;
+    padding: 0 1rem;
+    border: none;
+    border-radius: 4px;
+    background: #3b82f6;
+    color: white;
+    cursor: pointer;
+    font-size: 0.875rem;
+    transition: background-color 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .optimize-button:hover {
+    background: #2563eb;
   }
 
   .print-view-button {

@@ -10,6 +10,7 @@
 	import SketchListView from '$lib/components/show/SketchListView.svelte';
 	import SketchGridView from '$lib/components/show/SketchGridView.svelte';
 	import ShowPrintViewControls from '$lib/components/show/ShowPrintViewControls.svelte';
+	import { optimizeRunningOrder } from '$lib/services/optimizer';
 
 	export let data: PageData;
 	const dispatch = createEventDispatcher();
@@ -28,6 +29,7 @@
 	let printViewPerformer: string | null = null;
 	let isSidebarCollapsed = false;
 	let showFilterDropdown = false;
+	let isOptimizing = false;
 
 	function formatDuration(minutes: number): string {
 		const hours = Math.floor(minutes / 60);
@@ -378,6 +380,49 @@
 		selectedPerformer = performer;
 		showFilterDropdown = false;
 	}
+
+	async function handleOptimize() {
+		if (isOptimizing) return;
+		isOptimizing = true;
+
+		try {
+			// Get locked sketches to create constraints
+			const lockedSketches = sketches.filter(s => s.locked);
+			const constraints = {
+				anchored: lockedSketches.map(s => ({
+					sketch_id: s.id,
+					position: s.position
+				}))
+			};
+
+			const result = await optimizeRunningOrder(sketches, constraints);
+
+			if (result.success) {
+				// Update sketch positions based on the optimized order
+				const newSketches = sketches.map(sketch => {
+					const optimizedSketch = result.order.find(o => o.sketch_id === sketch.id);
+					return {
+						...sketch,
+						position: optimizedSketch?.position ?? sketch.position
+					};
+				}).sort((a, b) => a.position - b.position);
+
+				// Update the backend
+				await updateSketchOrderInBackend(newSketches);
+				sketches = newSketches;
+
+				// Show success message
+				alert(`Optimization complete! Cast overlaps reduced to ${result.metrics.cast_overlaps}`);
+			} else {
+				alert('Failed to optimize running order: ' + (result.error || 'Unknown error'));
+			}
+		} catch (error) {
+			console.error('Error optimizing running order:', error);
+			alert('Failed to optimize running order. Please try again.');
+		} finally {
+			isOptimizing = false;
+		}
+	}
 </script>
 
 {#if showPrintView}
@@ -429,6 +474,7 @@
 				) => (printVersion = e.detail.printVersion)}
 				on:showPrintViewChange={(e: CustomEvent<{ showPrintView: boolean }>) =>
 					(showPrintView = e.detail.showPrintView)}
+				on:optimize={handleOptimize}
 			/>
 
 			{#if viewMode === 'list'}
