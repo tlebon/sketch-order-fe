@@ -46,10 +46,13 @@ export const sketchTechDetails = sqliteTable('sketch_tech_details', {
 	props: text('props'),
 	costume: text('costume'),
 	stage_dressing: text('stage_dressing'),
+	chairs: integer('chairs').default(0),
+	stools: integer('stools').default(0),
+	other_props: text('other_props'),
 	created_at: text('created_at').notNull(),
 	updated_at: text('updated_at').notNull()
 }, (table) => ({
-	sketchIdx: uniqueIndex('sketch_tech_details_sketch_id_idx').on(table.sketch_id),
+	sketchIdIdx: uniqueIndex('sketch_tech_details_sketch_id_idx').on(table.sketch_id)
 }));
 
 export const castMembers = sqliteTable('cast_members', {

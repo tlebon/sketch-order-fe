@@ -5,7 +5,7 @@ export default {
 	out: './drizzle',
 	dialect: 'sqlite',
 	dbCredentials: {
-		url: './sketches.db',
+		url: './sketches.db'
 	},
 	verbose: true,
 	strict: true

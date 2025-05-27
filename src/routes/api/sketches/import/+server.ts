@@ -3,6 +3,7 @@ import { createClient } from '$lib/server/db';
 import type { RequestHandler } from './$types';
 import type { CharacterPerformer } from '$lib/types';
 import type { NewSketchTechDetails } from '$lib/server/db/schema';
+import { parseStageDressing } from '$lib/utils/stageDressing';
 
 export const POST: RequestHandler = async ({ request }) => {
   try {
@@ -52,7 +53,7 @@ export const POST: RequestHandler = async ({ request }) => {
           results.push({ success: false, error: errorMsg, sketch });
         }
       }
-    } else if (importType === 'techDetails') {
+    } else {
       const existingSketches = await db.getSketches(show_id);
       if (!existingSketches) {
         return json({ error: 'Could not retrieve sketches for the show.' }, { status: 500 });
@@ -66,13 +67,19 @@ export const POST: RequestHandler = async ({ request }) => {
         );
 
         if (matchedSketch) {
+          const stageDressing = techItem['stage dressing'] || techItem.stage_dressing || null;
+          const { chairs, stools, other_props } = parseStageDressing(stageDressing);
+
           const techDataToUpsert: NewSketchTechDetails = {
             id: crypto.randomUUID(),
             sketch_id: matchedSketch.id,
             cues: techItem.cues || null,
             props: techItem.props || null,
             costume: techItem.costume || null,
-            stage_dressing: techItem['stage dressing'] || techItem.stage_dressing || null,
+            stage_dressing: stageDressing,
+            chairs,
+            stools,
+            other_props,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           };

@@ -15,6 +15,9 @@ export interface SketchTechDetails {
   props: string | null;
   costume: string | null;
   stage_dressing: string | null;
+  chairs: number;
+  stools: number;
+  other_props: string | null;
   created_at: string | null;
   updated_at: string | null;
 }

@@ -166,6 +166,9 @@ export function createClient() {
           tech_props: sketchTechDetails.props,
           tech_costume: sketchTechDetails.costume,
           tech_stage_dressing: sketchTechDetails.stage_dressing,
+          tech_chairs: sketchTechDetails.chairs,
+          tech_stools: sketchTechDetails.stools,
+          tech_other_props: sketchTechDetails.other_props,
           tech_created_at: sketchTechDetails.created_at,
           tech_updated_at: sketchTechDetails.updated_at
         })
@@ -224,6 +227,9 @@ export function createClient() {
           props: row.tech_props,
           costume: row.tech_costume,
           stage_dressing: row.tech_stage_dressing,
+          chairs: row.tech_chairs || 0,
+          stools: row.tech_stools || 0,
+          other_props: row.tech_other_props,
           created_at: row.tech_created_at,
           updated_at: row.tech_updated_at
         } : null;
@@ -363,6 +369,9 @@ export function createClient() {
             props: finalData.props,
             costume: finalData.costume,
             stage_dressing: finalData.stage_dressing,
+            chairs: finalData.chairs,
+            stools: finalData.stools,
+            other_props: finalData.other_props,
             updated_at: now // Ensure updated_at is set on update
           }
         })

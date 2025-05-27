@@ -13,6 +13,15 @@
   let characterName = '';
   let performerName = '';
   let characterPerformers = [...(sketch.character_performers || [])];
+  let editedTechDetails = {
+    cues: sketch.techDetails?.cues || '',
+    props: sketch.techDetails?.props || '',
+    costume: sketch.techDetails?.costume || '',
+    stage_dressing: sketch.techDetails?.stage_dressing || '',
+    chairs: sketch.techDetails?.chairs || 0,
+    stools: sketch.techDetails?.stools || 0,
+    other_props: sketch.techDetails?.other_props || ''
+  };
 
   function handleEdit() {
     isEditing = true;
@@ -25,6 +34,15 @@
     editedDuration = sketch.duration;
     editedChars = sketch.chars;
     characterPerformers = [...(sketch.character_performers || [])];
+    editedTechDetails = {
+      cues: sketch.techDetails?.cues || '',
+      props: sketch.techDetails?.props || '',
+      costume: sketch.techDetails?.costume || '',
+      stage_dressing: sketch.techDetails?.stage_dressing || '',
+      chairs: sketch.techDetails?.chairs || 0,
+      stools: sketch.techDetails?.stools || 0,
+      other_props: sketch.techDetails?.other_props || ''
+    };
   }
 
   function handleSave() {
@@ -35,7 +53,14 @@
       duration: editedDuration,
       chars: editedChars,
       casted: characterPerformers.length,
-      character_performers: characterPerformers
+      character_performers: characterPerformers,
+      techDetails: {
+        id: sketch.techDetails?.id || crypto.randomUUID(),
+        sketch_id: sketch.id,
+        ...editedTechDetails,
+        created_at: sketch.techDetails?.created_at || new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }
     };
     dispatch('update', { sketch: updatedSketch });
     isEditing = false;
@@ -217,6 +242,40 @@
             </div>
           {/if}
 
+          <div class="form-group">
+            <label>Tech Details</label>
+            <div class="tech-grid">
+              <div class="tech-item">
+                <label for="cues">Cues</label>
+                <textarea id="cues" bind:value={editedTechDetails.cues}></textarea>
+              </div>
+              <div class="tech-item">
+                <label for="props">Props</label>
+                <textarea id="props" bind:value={editedTechDetails.props}></textarea>
+              </div>
+              <div class="tech-item">
+                <label for="costume">Costume</label>
+                <textarea id="costume" bind:value={editedTechDetails.costume}></textarea>
+              </div>
+              <div class="tech-item">
+                <label for="stage_dressing">Stage Dressing</label>
+                <textarea id="stage_dressing" bind:value={editedTechDetails.stage_dressing}></textarea>
+              </div>
+              <div class="tech-item">
+                <label for="chairs">Chairs</label>
+                <input type="number" id="chairs" bind:value={editedTechDetails.chairs} min="0" />
+              </div>
+              <div class="tech-item">
+                <label for="stools">Stools</label>
+                <input type="number" id="stools" bind:value={editedTechDetails.stools} min="0" />
+              </div>
+              <div class="tech-item">
+                <label for="other_props">Other Props</label>
+                <textarea id="other_props" bind:value={editedTechDetails.other_props}></textarea>
+              </div>
+            </div>
+          </div>
+
           <div class="form-actions">
             <button type="button" onclick={handleCancel}>Cancel</button>
             <button type="button" onclick={handleSave}>Save</button>
@@ -265,24 +324,80 @@
           <!-- Tech Details Section -->
           <div class="tech-section">
             <h4 class="section-title">Tech Details</h4>
-            {#if sketch.techDetails}
+            {#if isEditing}
               <div class="tech-grid">
                 <div class="tech-item">
-                  <span class="tech-label">Cues</span>
-                  <span class="tech-value">{sketch.techDetails.cues || 'N/A'}</span>
+                  <label for="cues">Cues</label>
+                  <textarea id="cues" bind:value={editedTechDetails.cues}></textarea>
                 </div>
                 <div class="tech-item">
-                  <span class="tech-label">Props</span>
-                  <span class="tech-value">{sketch.techDetails.props || 'N/A'}</span>
+                  <label for="props">Props</label>
+                  <textarea id="props" bind:value={editedTechDetails.props}></textarea>
                 </div>
                 <div class="tech-item">
-                  <span class="tech-label">Costume</span>
-                  <span class="tech-value">{sketch.techDetails.costume || 'N/A'}</span>
+                  <label for="costume">Costume</label>
+                  <textarea id="costume" bind:value={editedTechDetails.costume}></textarea>
                 </div>
                 <div class="tech-item">
-                  <span class="tech-label">Stage Dressing</span>
-                  <span class="tech-value">{sketch.techDetails.stage_dressing || 'N/A'}</span>
+                  <label for="stage_dressing">Stage Dressing</label>
+                  <textarea id="stage_dressing" bind:value={editedTechDetails.stage_dressing}></textarea>
                 </div>
+                <div class="tech-item">
+                  <label for="chairs">Chairs</label>
+                  <input type="number" id="chairs" bind:value={editedTechDetails.chairs} min="0" />
+                </div>
+                <div class="tech-item">
+                  <label for="stools">Stools</label>
+                  <input type="number" id="stools" bind:value={editedTechDetails.stools} min="0" />
+                </div>
+                <div class="tech-item">
+                  <label for="other_props">Other Props</label>
+                  <textarea id="other_props" bind:value={editedTechDetails.other_props}></textarea>
+                </div>
+              </div>
+            {:else if sketch.techDetails}
+              <div class="tech-grid">
+                {#if sketch.techDetails.cues}
+                  <div class="tech-item">
+                    <span class="tech-label">Cues</span>
+                    <span class="tech-value">{sketch.techDetails.cues}</span>
+                  </div>
+                {/if}
+                {#if sketch.techDetails.props}
+                  <div class="tech-item">
+                    <span class="tech-label">Props</span>
+                    <span class="tech-value">{sketch.techDetails.props}</span>
+                  </div>
+                {/if}
+                {#if sketch.techDetails.costume}
+                  <div class="tech-item">
+                    <span class="tech-label">Costume</span>
+                    <span class="tech-value">{sketch.techDetails.costume}</span>
+                  </div>
+                {/if}
+                {#if sketch.techDetails.stage_dressing}
+                  <div class="tech-item">
+                    <span class="tech-label">Stage Dressing</span>
+                    <span class="tech-value">{sketch.techDetails.stage_dressing}</span>
+                  </div>
+                {/if}
+                {#if sketch.techDetails.chairs > 0 || sketch.techDetails.stools > 0}
+                  <div class="tech-item">
+                    <span class="tech-label">Furniture</span>
+                    <span class="tech-value">
+                      {[
+                        sketch.techDetails.chairs > 0 ? `${sketch.techDetails.chairs} chair${sketch.techDetails.chairs !== 1 ? 's' : ''}` : null,
+                        sketch.techDetails.stools > 0 ? `${sketch.techDetails.stools} stool${sketch.techDetails.stools !== 1 ? 's' : ''}` : null
+                      ].filter(Boolean).join(', ')}
+                    </span>
+                  </div>
+                {/if}
+                {#if sketch.techDetails.other_props}
+                  <div class="tech-item">
+                    <span class="tech-label">Other Props</span>
+                    <span class="tech-value">{sketch.techDetails.other_props}</span>
+                  </div>
+                {/if}
               </div>
             {:else}
               <p class="no-tech-details">No tech details available for this sketch.</p>
@@ -508,7 +623,8 @@
   .tech-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 0.5rem;
+    gap: 1rem;
+    margin-top: 0.5rem;
   }
 
   .cast-item, .tech-item {
