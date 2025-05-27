@@ -1,4 +1,4 @@
-FROM node:20-slim
+FROM --platform=linux/amd64 node:20-slim
 
 WORKDIR /app
 
@@ -16,16 +16,20 @@ RUN corepack enable && corepack prepare pnpm@latest --activate
 COPY package.json pnpm-lock.yaml ./
 
 # Install dependencies
-RUN pnpm install
+RUN pnpm install --frozen-lockfile
 
 # Copy the rest of the application
 COPY . .
 
-# Rebuild native dependencies
-RUN pnpm rebuild
+# Build the application
+RUN pnpm build
 
-# Expose the development server port
+# Install serve to run the production build
+RUN pnpm add -g serve
+
+# Expose the port
 EXPOSE 5173
 
-# Start the development server
-CMD ["pnpm", "dev", "--host"]
+# Start the production server
+ENV NODE_ENV=production
+CMD ["serve", "-s", "build", "-l", "5173"]
