@@ -1,0 +1,46 @@
+name: svelte-sketch-fe
+services:
+  - name: frontend
+    github:
+      branch: main
+      deploy_on_push: true
+      repo: tlebon/svelte-sketch-fe
+    build_command: pnpm install && pnpm build
+    run_command: serve -s build -l 5173
+    http_port: 5173
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    health_check:
+      http_path: /api/health
+      initial_delay_seconds: 30
+      period_seconds: 10
+      timeout_seconds: 5
+      success_threshold: 1
+      failure_threshold: 3
+    envs:
+      - key: NODE_ENV
+        value: production
+      - key: VITE_API_URL
+        value: http://optimizer:8000
+
+  - name: optimizer
+    github:
+      branch: main
+      deploy_on_push: true
+      repo: tlebon/svelte-sketch-fe
+    dockerfile_path: sketch_running_order/Dockerfile
+    http_port: 8000
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    health_check:
+      http_path: /health
+      initial_delay_seconds: 30
+      period_seconds: 10
+      timeout_seconds: 5
+      success_threshold: 1
+      failure_threshold: 3
+    envs:
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      - key: FLASK_DEBUG
+        value: "0"

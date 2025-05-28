@@ -1,4 +1,4 @@
-FROM --platform=linux/amd64 node:20-slim
+FROM --platform=linux/amd64 node:20-slim as builder
 
 WORKDIR /app
 
@@ -24,8 +24,17 @@ COPY . .
 # Build the application
 RUN pnpm build
 
-# Install serve to run the production build
-RUN pnpm add -g serve
+# Production stage
+FROM --platform=linux/amd64 node:20-slim
+
+WORKDIR /app
+
+# Install serve
+RUN npm install -g serve
+
+# Copy built files from builder
+COPY --from=builder /app/build ./build
+COPY --from=builder /app/package.json ./
 
 # Expose the port
 EXPOSE 5173
