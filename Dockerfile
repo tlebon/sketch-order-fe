@@ -1,31 +1,40 @@
-FROM node:20-slim
+# ---- Build Stage ----
+    FROM node:20-slim AS builder
 
-WORKDIR /app
+    WORKDIR /app
 
-# Install build dependencies
-RUN apt-get update && apt-get install -y \
-    python3 \
-    make \
-    g++ \
-    && rm -rf /var/lib/apt/lists/*
+    # Install pnpm
+    RUN npm install -g pnpm
 
-# Install pnpm
-RUN corepack enable && corepack prepare pnpm@latest --activate
+    # Copy package files
+    COPY package.json pnpm-lock.yaml ./
 
-# Copy package files
-COPY package.json pnpm-lock.yaml ./
+    # Install dependencies
+    RUN pnpm install
 
-# Install dependencies
-RUN pnpm install
+    # Copy source code
+    COPY . .
 
-# Copy the rest of the application
-COPY . .
+    # Build the app
+    RUN pnpm build
 
-# Rebuild native dependencies
-RUN pnpm rebuild
+    # ---- Production Stage ----
+    FROM node:20-slim
 
-# Expose the development server port
-EXPOSE 5173
+    WORKDIR /app
 
-# Start the development server
-CMD ["pnpm", "dev", "--host"]
+    # Copy built app and dependencies
+    COPY --from=builder /app/package.json ./
+    COPY --from=builder /app/pnpm-lock.yaml ./
+    COPY --from=builder /app/.svelte-kit /app/.svelte-kit
+    COPY --from=builder /app/static /app/static
+
+    # Install only production dependencies
+    RUN npm install -g pnpm && pnpm install --prod
+
+    # Set the port (change if needed)
+    ENV PORT=5173
+    EXPOSE 5173
+
+    # Start the app (Node adapter)
+    CMD ["node", ".svelte-kit/output/server/index.js"]
