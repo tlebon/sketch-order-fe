@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { dndzone } from 'svelte-dnd-action';
   import type { PageData } from './$types';
   import { Trash2 } from '@lucide/svelte';
 
@@ -21,42 +20,6 @@
     title: '',
     description: ''
   });
-
-  async function handleDndConsider(e: CustomEvent) {
-    const { items } = e.detail;
-    isDragging = true;
-    shows = items;
-  }
-
-  async function handleDndFinalize(e: CustomEvent) {
-    const { items } = e.detail;
-    isDragging = false;
-    shows = items;
-
-    // Update positions in the database
-    const updates = items.map((show: Show, index: number) => ({
-      id: show.id,
-      position: index
-    }));
-
-    try {
-      const response = await fetch('/api/shows', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ updates })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to update show order');
-      }
-    } catch (error) {
-      console.error('Failed to update show order:', error);
-      // Revert to the original order if the update fails
-      shows = [...shows].sort((a, b) => a.position - b.position);
-    }
-  }
 
   async function handleCreate() {
     const now = new Date().toISOString();
@@ -109,7 +72,7 @@
 <div class="max-w-7xl mx-auto p-8">
   <div class="text-center mb-8">
     <h1 class="text-3xl font-bold text-gray-900 mb-2">Sketch Show Manager</h1>
-    <p class="text-gray-600">Create and manage your sketch shows. Drag and drop to reorder.</p>
+    <p class="text-gray-600">Create and manage your sketch shows.</p>
   </div>
 
   <div class="flex justify-end mb-6">
@@ -165,12 +128,7 @@
     </div>
   {/if}
 
-  <div
-    use:dndzone={{ items: shows }}
-    onconsider={handleDndConsider}
-    onfinalize={handleDndFinalize}
-    class="space-y-4"
-  >
+  <div class="space-y-4">
     {#each shows as show (show.id)}
       <div class="bg-white rounded-lg shadow p-6 hover:shadow-md transition-shadow">
         <div class="flex justify-between items-start">
