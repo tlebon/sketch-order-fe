@@ -46,6 +46,34 @@ export const POST: RequestHandler = async ({ request }) => {
               performer_name: cp.performer_name
             })) || []
           });
+
+          // Upsert tech details if present in the imported sketch
+          if (
+            sketch.stage_dressing ||
+            typeof sketch.chairs === 'number' ||
+            typeof sketch.stools === 'number' ||
+            (typeof sketch.other_props === 'string' && sketch.other_props.length > 0)
+          ) {
+            const techDataToUpsert: NewSketchTechDetails = {
+              id: crypto.randomUUID(),
+              sketch_id: newSketch.id,
+              cues: null,
+              props: null,
+              costume: null,
+              stage_dressing: sketch.stage_dressing || null,
+              chairs: typeof sketch.chairs === 'number' ? sketch.chairs : 0,
+              stools: typeof sketch.stools === 'number' ? sketch.stools : 0,
+              other_props: typeof sketch.other_props === 'string' ? sketch.other_props : null,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            };
+            try {
+              await db.upsertSketchTechDetails(techDataToUpsert);
+            } catch (upsertError) {
+              console.error(`Error upserting tech details for sketch '${sketch.title}':`, upsertError);
+            }
+          }
+
           results.push({ success: true, sketch: newSketch });
         } catch (err) {
           const errorMsg = err instanceof Error ? err.message : String(err);

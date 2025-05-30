@@ -2,8 +2,7 @@
   import type { PageData } from './$types';
   import { Trash2 } from '@lucide/svelte';
 
-  // Assume 'data' is loaded via SvelteKit's load function
-  export let data: PageData;
+  const { data } = $props();
 
   interface Show {
     id: string;
@@ -14,29 +13,18 @@
     position: number;
   }
 
-  let shows: Show[] = data.shows;
-  let isDragging = false;
-  let showForm = false;
-  let newShow = {
+  let shows = $state<Show[]>(data.shows);
+  let isDragging = $state(false);
+  let showForm = $state(false);
+  let newShow = $state({
     title: '',
     description: ''
-  };
-
-  function getUUID() {
-    if (typeof window !== 'undefined' && window.crypto && typeof window.crypto.randomUUID === 'function') {
-      return window.crypto.randomUUID();
-    }
-    // Fallback: not cryptographically secure, but works for most cases
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-      var r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
-      return v.toString(16);
-    });
-  }
+  });
 
   async function handleCreate() {
     const now = new Date().toISOString();
     const show: Show = {
-      id: getUUID(),
+      id: crypto.randomUUID(),
       ...newShow,
       position: shows.length,
       created_at: now,
@@ -90,7 +78,7 @@
   <div class="flex justify-end mb-6">
     <button
       class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg"
-      on:click={() => showForm = true}
+      onclick={() => showForm = true}
     >
       Create New Show
     </button>
@@ -99,7 +87,7 @@
   {#if showForm}
     <div class="bg-white rounded-lg shadow p-6 mb-6">
       <h2 class="text-xl font-semibold mb-4">Create New Show</h2>
-      <form on:submit|preventDefault={handleCreate}>
+      <form onsubmit={(e) => { e.preventDefault(); handleCreate(); }}>
         <div class="space-y-4">
           <div>
             <label for="title" class="block text-sm font-medium text-gray-700">Title</label>
@@ -124,7 +112,7 @@
             <button
               type="button"
               class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
-              on:click={() => showForm = false}
+              onclick={() => showForm = false}
             >
               Cancel
             </button>
@@ -157,7 +145,7 @@
           <div class="flex space-x-2">
             <button
               class="text-red-500 hover:text-red-600"
-              on:click={() => handleDelete(show.id)}
+              onclick={() => handleDelete(show.id)}
               aria-label="Delete show"
             >
               <Trash2 size={20} />

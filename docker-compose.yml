@@ -8,8 +8,7 @@ services:
     ports:
       - "8080:3000"
     volumes:
-      # - .:/app
-      - /app/node_modules
+      - ./sketches.db:/app/sketches.db  # Persist the SQLite DB file
     environment:
       - VITE_API_URL=http://optimizer:8000
     depends_on:

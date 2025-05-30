@@ -1,4 +1,5 @@
 import Papa from 'papaparse';
+import { parseStageDressing } from './stageDressing';
 
 export interface SketchData {
   id: string;
@@ -10,6 +11,10 @@ export interface SketchData {
   locked: boolean;
   character_performers: { character_name: string; performer_name: string }[];
   raw_data: Record<string, string>;
+  stage_dressing: string;
+  chairs: number;
+  stools: number;
+  other_props: string | null;
 }
 
 export function parseCSV(csvText: string): Record<string, string>[] {
@@ -39,73 +44,71 @@ export function parseCSV(csvText: string): Record<string, string>[] {
 }
 
 export function processSketchData(sketchesData: Record<string, string>[]): SketchData[] {
-  const mergedData: Record<string, SketchData> = {};
-
-  // List of summary/statistics titles to skip
-  const summaryTitles = [
-    "total", "actors", "chars/actor", "min number", "people with extra"
+  // Try to detect performer columns dynamically (columns after known fields)
+  const knownFields = [
+    '#', 'sketch name', 'stage needs (chairs etc)', 'duration', 'director',
+    'title', 'time', 'chars', 'casted', 'description', 'stage dressing'
   ];
 
-  // Process each row
-  sketchesData.forEach(row => {
-    const title = row['title']?.trim();
-    const chars = parseInt(row['chars'] || '', 10);
-
-    // Skip summary/statistics rows and invalid rows
-    if (!title || summaryTitles.includes(title.toLowerCase()) || isNaN(chars) || chars <= 0) return;
-
-    // Extract character-performer pairs
-    const characterPerformers: { character_name: string; performer_name: string }[] = [];
-    const columns = Object.keys(row);
-
-    // Find the index of the 'casted' column
-    const castedIndex = columns.findIndex(col => col.toLowerCase() === 'casted');
-    console.log(`Processing sketch "${title}":`, { castedIndex, columns });
-
-    // Process columns after 'casted' as character-performer pairs
-    if (castedIndex !== -1) {
-      for (let i = castedIndex + 1; i < columns.length; i++) {
-        const performerName = columns[i].trim();
-        const characterName = row[columns[i]]?.trim();
-        if (performerName && characterName) {
-          console.log(`Found character-performer pair:`, { performerName, characterName });
-          characterPerformers.push({
-            character_name: characterName,
-            performer_name: performerName
-          });
-        }
-      }
-    }
-
-    // Parse duration from time format (MM:SS)
-    const timeStr = row['time'] || row['duration'] || '5:00';
-    const [minutes, seconds] = timeStr.split(':').map(Number);
-    const duration = minutes + (seconds || 0) / 60;
-
-    mergedData[title] = {
-      id: crypto.randomUUID(),
-      title,
-      description: row['description'] || '',
-      duration: Math.ceil(duration), // Round up to nearest minute
-      chars: parseInt(row['chars'] || '0', 10),
-      casted: characterPerformers.length,
-      locked: false, // Initialize all imported sketches as unlocked
-      character_performers: characterPerformers.map(cp => ({
-        character_name: cp.character_name,
-        performer_name: cp.performer_name
-      })),
-      raw_data: row // Preserve the raw CSV data
-    };
-  });
-
-  console.log('Processed sketches with character performers:',
-    Object.values(mergedData).map(s => ({
-      title: s.title,
-      character_performers: s.character_performers
-    }))
+  // Find all unique performer columns in the data
+  const allColumns = Array.from(
+    new Set(sketchesData.flatMap(row => Object.keys(row)))
+  );
+  const performerColumns = allColumns.filter(
+    col => !knownFields.map(f => f.toLowerCase()).includes(col.trim().toLowerCase()) && col.trim() !== ''
   );
 
-  return Object.values(mergedData);
+  return sketchesData
+    .filter(row => {
+      // Use lowercased keys for all lookups
+      const rowLc = Object.fromEntries(Object.entries(row).map(([k, v]) => [k.toLowerCase(), v]));
+      const title = rowLc['sketch name'] || rowLc['title'];
+      return title && title.trim() && !['total', 'actors', 'chars/actor', 'min number', 'people with extra'].includes(title.trim().toLowerCase());
+    })
+    .map((row, idx) => {
+      // Use lowercased keys for all lookups
+      const rowLc = Object.fromEntries(Object.entries(row).map(([k, v]) => [k.toLowerCase(), v]));
+      const title = rowLc['sketch name']?.trim() || rowLc['title']?.trim() || `Untitled ${idx + 1}`;
+      let description = rowLc['stage needs (chairs etc)'] || rowLc['description'] || '';
+      const director = rowLc['director']?.trim();
+      if (director) {
+        description = description ? `${description}\nDirector: ${director}` : `Director: ${director}`;
+      }
+      const durationStr = rowLc['duration'] || rowLc['time'] || '';
+      let duration = 0;
+      if (durationStr.includes(':')) {
+        const [minutes, seconds] = durationStr.split(':').map(Number);
+        duration = minutes + (seconds || 0) / 60;
+      } else {
+        duration = parseInt(durationStr || '0', 10);
+      }
+      // Stage dressing: try to pull from 'stage needs (chairs etc)' or 'stage dressing'
+      const stage_dressing = rowLc['stage needs (chairs etc)'] || '';
+      const { chairs, stools, other_props } = parseStageDressing(stage_dressing);
+      // Build character_performers array
+      const character_performers = performerColumns
+        .filter(name => row[name] && row[name].trim() !== '')
+        .map(name => ({
+          character_name: row[name].trim(),
+          performer_name: name
+        }));
+
+      return {
+        id: crypto.randomUUID(),
+        title,
+        description,
+        duration: Math.ceil(duration),
+        chars: character_performers.length,
+        casted: character_performers.length,
+        locked: false,
+        character_performers,
+        stage_dressing,
+        chairs,
+        stools,
+        other_props,
+        raw_data: row
+      };
+    });
 }
 
 export async function readCSVFile(file: File): Promise<Record<string, string>[]> {

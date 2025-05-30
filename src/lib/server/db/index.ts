@@ -282,21 +282,10 @@ export function createClient() {
 
     async deleteSketch(id: string) {
       // Use a transaction to ensure atomicity
-      await db.transaction(async (tx) => {
-        // First, delete associated character performers
-        await tx
-          .delete(characterPerformers)
-          .where(sql`sketch_id = ${id}`);
-
-        // Second, delete associated sketch tech details
-        await tx
-          .delete(sketchTechDetails)
-          .where(sql`sketch_id = ${id}`);
-
-        // Then, delete the sketch itself
-        await tx
-          .delete(sketches)
-          .where(sql`id = ${id}`);
+      db.transaction((tx) => {
+        tx.delete(characterPerformers).where(sql`sketch_id = ${id}`);
+        tx.delete(sketchTechDetails).where(sql`sketch_id = ${id}`);
+        tx.delete(sketches).where(sql`id = ${id}`);
       });
     },
 

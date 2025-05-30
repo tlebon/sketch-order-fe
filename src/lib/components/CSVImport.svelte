@@ -17,7 +17,19 @@
       return 'techDetails';
     }
 
-    // Sketches CSV Detection
+    // New Sketches CSV Detection (new format)
+    // Required: 'sketch name' and 'stage needs (chairs etc)' and at least one performer column
+    const hasSketchName = lowerCaseHeaders.includes('sketch name');
+    const hasStageNeeds = lowerCaseHeaders.includes('stage needs (chairs etc)');
+    const hasDuration = lowerCaseHeaders.includes('duration');
+    // Performer columns: any header not in the known set and not empty
+    const knownSketchHeaders = new Set(['#', 'sketch name', 'stage needs (chairs etc)', 'duration', 'director']);
+    const performerColumns = headers.filter(h => !knownSketchHeaders.has(h.toLowerCase().trim()) && h.trim() !== '');
+    if (hasSketchName && hasStageNeeds && hasDuration && performerColumns.length > 0) {
+      return 'sketches';
+    }
+
+    // Old Sketches CSV Detection (legacy format)
     const sketchRequiredHeaders = ["title"];
     const sketchOptionalKeyHeaders = [
       "time", "chars", "casted", "rocio", "jacob", "adrian", "vera", "max",
@@ -100,9 +112,9 @@
 
 <div
   class="bg-white p-6 rounded-lg shadow-sm"
-  ondragover={(e) => handleDragOver(e)}
-  ondragleave={(e) => handleDragLeave(e)}
-  ondrop={(e) => handleDrop(e)}
+  ondragover={(e: DragEvent) => handleDragOver(e)}
+  ondragleave={(e: DragEvent) => handleDragLeave(e)}
+  ondrop={(e: DragEvent) => handleDrop(e)}
   class:border-2={isDragging}
   class:border-dashed={isDragging}
   class:border-blue-500={isDragging}
