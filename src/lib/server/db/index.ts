@@ -3,6 +3,15 @@ import Database from 'better-sqlite3';
 import { sketches, sketchShows, characterPerformers, sketchTechDetails, type NewSketchTechDetails } from './schema';
 import { sql, eq } from 'drizzle-orm';
 import { join } from 'path';
+import { randomUUID } from 'crypto';
+
+// Polyfill for crypto.randomUUID if missing (Node 20+ should have it, but this is for safety)
+if (typeof globalThis.crypto === 'undefined') {
+  // Do not assign an empty object to globalThis.crypto to avoid type errors
+  // Only polyfill randomUUID if crypto exists
+} else if (typeof globalThis.crypto.randomUUID !== 'function') {
+  globalThis.crypto.randomUUID = randomUUID;
+}
 
 // Use DATABASE_URL from .env if available, otherwise default to sketches.db
 const dbPath = process.env.DATABASE_URL || join(process.cwd(), 'sketches.db');
@@ -245,7 +254,7 @@ export function createClient() {
 
       if (character_performers && character_performers.length > 0) {
         const characterPerformerValues = character_performers.map((cp: { character_name: string; performer_name: string }) => ({
-          id: crypto.randomUUID(),
+          id: randomUUID(),
           sketch_id: newSketch.id,
           character_name: cp.character_name,
           performer_name: cp.performer_name,
@@ -316,7 +325,7 @@ export function createClient() {
         if (character_performers.length > 0) {
           await db.insert(characterPerformers).values(
             character_performers.map(cp => ({
-              id: crypto.randomUUID(),
+              id: randomUUID(),
               sketch_id: id,
               character_name: cp.character_name,
               performer_name: cp.performer_name,
@@ -335,7 +344,7 @@ export function createClient() {
       const now = new Date().toISOString();
       const finalData = {
         ...data,
-        id: data.id || crypto.randomUUID(), // Ensure ID exists for insert
+        id: data.id || randomUUID(), // Ensure ID exists for insert
         created_at: now, // Set created_at for new entries
         updated_at: now  // Always update updated_at
       };
