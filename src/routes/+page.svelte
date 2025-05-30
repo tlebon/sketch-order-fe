@@ -62,7 +62,15 @@
         throw new Error('Failed to delete show');
       }
 
-      shows = shows.filter(show => show.id !== id);
+      // Reload shows from backend after delete
+      const refreshed = await fetch('/api/shows');
+      if (refreshed.ok) {
+        shows = await refreshed.json();
+        shows = [...shows];
+      } else {
+        shows = shows.filter(show => show.id !== id);
+        shows = [...shows];
+      }
     } catch (error) {
       console.error('Failed to delete show:', error);
     }

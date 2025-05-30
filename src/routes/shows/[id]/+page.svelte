@@ -132,7 +132,6 @@
 					.map((r: { sketch: Sketch }) => r.sketch);
 
 				if (newSketches.length > 0) {
-					sketches = [...sketches, ...newSketches].sort((a, b) => a.position - b.position);
 					alert(`${newSketches.length} sketch(es) imported successfully.`);
 				} else {
 					// Check for partial success or specific errors reported in importResults
@@ -148,6 +147,8 @@
 						);
 					}
 				}
+				// Always reload sketches after import (new or updated)
+				await loadSketches();
 			} else {
 				// techDetails
 				const successfulTechUpdates = importResults.filter(
@@ -205,9 +206,8 @@
 
 			if (!response.ok) throw new Error('Failed to delete sketch');
 
-			const deletedSketchIndex = sketches.findIndex((s) => s.id === sketchId);
-			sketches = sketches.filter((sketch) => sketch.id !== sketchId);
-			sketches = sketches.map((s, index) => ({ ...s, position: index }));
+			await loadSketches();
+			sketches = [...sketches];
 			if (selectedSketch?.id === sketchId) {
 				selectedSketch = null;
 			}

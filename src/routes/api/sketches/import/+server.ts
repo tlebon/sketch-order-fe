@@ -26,9 +26,75 @@ export const POST: RequestHandler = async ({ request }) => {
       // Get the current number of sketches for this show
       const existingSketches = await db.getSketches(show_id);
       const startPosition = existingSketches ? existingSketches.length : 0;
+      // Build a map of normalized titles to existing sketches for fast lookup
+      const existingTitleMap = new Map(
+        (existingSketches || []).map(s => [s.title.trim().toLowerCase(), s])
+      );
+      let insertedCount = 0;
+      for (const sketch of data) {
+        // Normalize the title for duplicate checking
+        const normalizedTitle = (sketch.title || '').trim().toLowerCase();
+        const existingSketch = existingTitleMap.get(normalizedTitle);
+        if (existingSketch) {
+          // Merge new info into the existing sketch (only overwrite with non-empty values)
+          const updateData: {
+            title?: string;
+            description?: string;
+            duration?: number;
+            chars?: number;
+            casted?: number;
+            locked?: boolean;
+            position?: number;
+            raw_data?: string;
+            character_performers?: { character_name: string; performer_name: string }[];
+          } = {};
+          if (typeof sketch.description === 'string' && sketch.description.trim() && sketch.description !== existingSketch.description) updateData.description = sketch.description;
+          if (sketch.duration && sketch.duration !== existingSketch.duration) updateData.duration = sketch.duration;
+          if (sketch.chars && sketch.chars !== existingSketch.chars) updateData.chars = sketch.chars;
+          if (sketch.character_performers && sketch.character_performers.length > 0) updateData.character_performers = sketch.character_performers;
+          if (sketch.casted && sketch.casted !== existingSketch.casted) updateData.casted = sketch.casted;
+          if (sketch.raw_data) updateData.raw_data = JSON.stringify(sketch.raw_data);
+          // Optionally update other fields as needed
+          try {
+            const updatedSketch = Object.keys(updateData).length > 0
+              ? await db.updateSketch(existingSketch.id, updateData)
+              : existingSketch;
 
-      for (const [i, sketch] of data.entries()) {
-        console.log('Inserting sketch:', sketch);
+            // Upsert tech details if present in the imported sketch
+            if (
+              sketch.stage_dressing ||
+              typeof sketch.chairs === 'number' ||
+              typeof sketch.stools === 'number' ||
+              (typeof sketch.other_props === 'string' && sketch.other_props.length > 0)
+            ) {
+              const techDataToUpsert: NewSketchTechDetails = {
+                id: crypto.randomUUID(),
+                sketch_id: existingSketch.id,
+                cues: null,
+                props: null,
+                costume: null,
+                stage_dressing: sketch.stage_dressing || null,
+                chairs: typeof sketch.chairs === 'number' ? sketch.chairs : 0,
+                stools: typeof sketch.stools === 'number' ? sketch.stools : 0,
+                other_props: typeof sketch.other_props === 'string' ? sketch.other_props : null,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              };
+              try {
+                await db.upsertSketchTechDetails(techDataToUpsert);
+              } catch (upsertError) {
+                console.error(`Error upserting tech details for sketch '${sketch.title}':`, upsertError);
+              }
+            }
+
+            results.push({ success: true, sketch: updatedSketch, updated: true });
+          } catch (err) {
+            const errorMsg = err instanceof Error ? err.message : String(err);
+            console.error('Failed to update sketch:', err);
+            results.push({ success: false, error: errorMsg, sketch });
+          }
+          continue;
+        }
         try {
           const newSketch = await db.createSketch({
             id: crypto.randomUUID(),
@@ -39,7 +105,7 @@ export const POST: RequestHandler = async ({ request }) => {
             chars: sketch.chars,
             casted: sketch.character_performers?.length || 0,
             locked: false,
-            position: startPosition + i,
+            position: startPosition + insertedCount,
             raw_data: JSON.stringify(sketch.raw_data),
             character_performers: sketch.character_performers?.map((cp: CharacterPerformer) => ({
               character_name: cp.character_name,
@@ -74,7 +140,9 @@ export const POST: RequestHandler = async ({ request }) => {
             }
           }
 
-          results.push({ success: true, sketch: newSketch });
+          results.push({ success: true, sketch: newSketch, created: true });
+          existingTitleMap.set(normalizedTitle, newSketch); // Add to map to prevent further dups in same import
+          insertedCount++;
         } catch (err) {
           const errorMsg = err instanceof Error ? err.message : String(err);
           console.error('Failed to insert sketch:', err);

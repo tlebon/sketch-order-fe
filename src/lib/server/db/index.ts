@@ -107,39 +107,33 @@ export function createClient() {
       });
     },
 
-    async deleteSketchShow(id: string) {
-      // Use a transaction to ensure atomicity
-      await db.transaction(async (tx) => {
-        // 1. Get all sketch IDs for the given show_id
-        const sketchIdsToDelete = await tx
+    deleteSketchShow(id: string) {
+      db.transaction((tx) => {
+        const sketchIdsToDelete = tx
           .select({ id: sketches.id })
           .from(sketches)
-          .where(eq(sketches.show_id, id));
+          .where(eq(sketches.show_id, id))
+          .all();
 
         if (sketchIdsToDelete.length > 0) {
           const ids = sketchIdsToDelete.map(s => s.id);
 
-          // 2. For each sketch_id, delete associated data
-          // Delete from characterPerformers
-          await tx
-            .delete(characterPerformers)
-            .where(sql`sketch_id IN (${sql.join(ids, sql`, `)})`);
+          tx.delete(characterPerformers)
+            .where(sql`sketch_id IN (${sql.join(ids, sql`, `)})`)
+            .run();
 
-          // Delete from sketchTechDetails
-          await tx
-            .delete(sketchTechDetails)
-            .where(sql`sketch_id IN (${sql.join(ids, sql`, `)})`);
+          tx.delete(sketchTechDetails)
+            .where(sql`sketch_id IN (${sql.join(ids, sql`, `)})`)
+            .run();
 
-          // Delete from sketches
-          await tx
-            .delete(sketches)
-            .where(sql`show_id = ${id}`);
+          tx.delete(sketches)
+            .where(sql`show_id = ${id}`)
+            .run();
         }
 
-        // 3. Finally, delete the show itself
-        await tx
-          .delete(sketchShows)
-          .where(sql`id = ${id}`);
+        tx.delete(sketchShows)
+          .where(sql`id = ${id}`)
+          .run();
       });
     },
 
@@ -282,10 +276,10 @@ export function createClient() {
 
     async deleteSketch(id: string) {
       // Use a transaction to ensure atomicity
-      db.transaction((tx) => {
-        tx.delete(characterPerformers).where(sql`sketch_id = ${id}`);
-        tx.delete(sketchTechDetails).where(sql`sketch_id = ${id}`);
-        tx.delete(sketches).where(sql`id = ${id}`);
+      await db.transaction(async (tx) => {
+        await tx.delete(characterPerformers).where(sql`sketch_id = ${id}`);
+        await tx.delete(sketchTechDetails).where(sql`sketch_id = ${id}`);
+        await tx.delete(sketches).where(sql`id = ${id}`);
       });
     },
 
